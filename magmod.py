@@ -11,6 +11,10 @@ from homogen import hom, cosmo as cosmologies
 cosmo = cosmologies.std
 c=hom.c
 
+#unit conversions
+Mpctom=3.0857*10**22
+mtoMpc=1/Mpctom
+
 
 h = cosmo['h']; sigma8 = cosmo['sigma_8']; n_s = cosmo['ns']; Omega_m = cosmo['omega_M_0']; H_0 = cosmo['H_0']; Omega_lambda = cosmo['omega_lambda_0']
 H_z = hom.H_z; E_z = hom.E_z
