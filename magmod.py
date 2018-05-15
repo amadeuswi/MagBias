@@ -1,13 +1,16 @@
 from __future__ import division
+import os
 import numpy as np
-from numpy import sqrt, sin, cos
+from numpy import pi,sin,cos,tan,e,arctan,arcsin,arccos,sqrt
 import sys
 from scipy import integrate
 import scipy.special as sp
+from scipy.interpolate import interp2d, interp1d
 
 
 
 from homogen import hom, cosmo as cosmologies
+from magbias_experiments import SKA, CLAR, n
 cosmo = cosmologies.std
 c=hom.c
 
@@ -104,3 +107,385 @@ def rCom(z):
            - sp.hyp2f1(1/3.0,0.5,4/3.0,-OmbyOl))
     out *= 2998/np.sqrt(Omega_lambda)
     return out/h
+
+
+
+############################################################################
+############################################################################
+#functions for the cross correlation power spectra
+#
+############################################################################
+############################################################################
+
+
+#preliminary, to be changed!!
+bHI = 1
+bgal = 1
+
+#camb power spectrum:
+pknl_root = "./PkNL/"
+filelist =  np.sort(os.listdir(pknl_root))
+# print "CHECK IF THIS IS IN ORDER:"
+# print filelist
+zc_pk = np.linspace(0,4,len(filelist))
+# print zc_pk
+
+k_pk = np.loadtxt(pknl_root + filelist[0], unpack = True)[0]
+
+pknl_arr = np.array([ np.loadtxt(pknl_root + fi, unpack = True)[1] for fi in filelist ])
+
+pknl_int = interp2d( k_pk, zc_pk, pknl_arr)
+
+def pknl(kk, zz):
+    res = pknl_int(kk/h, zz)/h**3
+    if len(res) == 1:
+        return res[0]
+    else:
+        return res
+
+
+# difficult to do quick integration because integration limit appears inside the integral. Therefore we split it up!
+#lensing kernel from Alkistis' notes:
+def g(z, zb, dzb, NINT = 10000): #new standard to use cumtrapz
+    """compare to my (handwritten) notebook 2 entry for 9/3/17
+    zb is background redshift"""
+    zmin = zb - dzb
+    zmax = zb + dzb
+    z = np.atleast_1d(z)
+    zintmin = 1e-3 #lower integration limit, z must not be smaller than this
+    if (z>zmax).any() or (z<zintmin).any():
+        raise ValueError("z either lies behind the background or is too small! z = {} to {}".format(np.amin(z), np.amax(z)))
+
+    zint = np.linspace(zmax, zintmin, NINT) #going reverse, multiply integral with -1
+    Warray = W_tophat(zint, zmin, zmax)
+    rarray = rCom(zint)
+    Wbyrarray = Warray/rarray
+
+    integrand1 = Warray
+    integrand2 = Wbyrarray
+
+    integral1 = -integrate.cumtrapz( integrand1, zint, initial = 0)
+    integral2 = -integrate.cumtrapz( integrand2, zint, initial = 0)
+
+    val1 = interp1d(zint[::-1], integral1[::-1], kind='linear', bounds_error=False)
+    val2 = interp1d(zint[::-1], integral2[::-1], kind='linear', bounds_error=False)
+
+    rComtab = rCom(z)
+    result = rComtab*(val1(z) - rComtab*val2(z))
+    return result
+
+
+def Cl_HIxmag_CAMB(ltable, zf, delta_zf, zb, delta_zb, Nint = 500):
+    """ltable, zf foreground redshift, zb background redshift,
+    delta_zf foreground redshift widht, Nint integration steps"""
+
+    #note there is no T_obs factor because we want to compare with galaxy case
+    fac1 = 3/2 * bHI*(H_0/c)**2 * Omega_m #no square on (H_0/c) because it cancels out
+    fac2 = bHI * (5*sg(zb) - 2)
+    zmin = zf - delta_zf
+    zmax = zf + delta_zf
+    ztab = np.linspace(zmin, zmax, Nint) #do checks on this! should be 0 to inf
+
+    integrand=np.zeros([len(ztab),len(ltable)])
+    for il in range(len(ltable)):
+        ell = ltable[il]
+        pknltab = np.array([pknl(( ell)/rCom(zzz), zzz) for zzz in ztab])
+        integrand[:,il] = (1+ztab) * W_tophat(ztab, zmin, zmax) * g(ztab, zb, delta_zb) \
+        / rCom(ztab)**2 * pknltab
+
+        #old and slow ways to calculate the same thing:
+#             integrand[:,il]= np.array([(1+zzz) * W_tophat(zzz, zfmin, zfmax) * g(zzz, zb, dzb) \
+#                                        / rCom(zzz)**2 * pknl(( ell)/rCom(zzz), zzz) for zzz in ztab])
+#         integrand[:,il]= np.array([(1+zzz) * W_tophat(zzz, zfmin, zfmax) * g(zzz, zb, dzb) * rCom(zzz) * pknl(( ell)/rCom(zzz), zzz) for zzz in ztab]) #different factor of chi than in alkistis' notes (units are wrong there)
+    result= fac1 * fac2 * np.trapz(integrand,ztab,axis=0)
+    return result
+
+
+
+def C_l_HIHI_CAMB(ltable,zmin,zmax, Nint = 500):
+    """arguments: ell array, zmin, zmax
+    returns: Cl as array"""
+    ztable = np.linspace(zmin, zmax, Nint)
+    integrand=np.zeros([len(ztable),len(ltable)])
+    for l in range(len(ltable)):
+        #for the moment we divide out T_obs to compare with the galaxy results
+#         integrand[:,l]=E_z(ztable)*(W_tophat(ztable,zmin,zmax)/rCom(ztable))**2*pknl((ltable[l])/rCom(ztable), ztable)
+        integrand[:,l]= np.array([E_z(zzz)*(W_tophat(zzz,zmin,zmax)/rCom(zzz))**2*pknl((ltable[l])/rCom(zzz), zzz) for zzz in ztable])
+    result=bHI* H_0/c*np.trapz(integrand,ztable,axis=0)
+    return result
+
+def C_l_gg_CAMB(ltable,zmin,zmax, Nint = 500):
+    """arguments: ell array, zmin, zmax
+    returns: Cl as array"""
+    ztable = np.linspace(zmin, zmax, Nint)
+    integrand=np.zeros([len(ztable),len(ltable)])
+    for l in range(len(ltable)):
+        integrand[:,l]=np.array([E_z(zzz)*(W_tophat(zzz,zmin,zmax)/rCom(zzz))**2*pknl((ltable[l])/rCom(zzz), zzz) for zzz in ztable])
+    result=bgal* H_0/c*np.trapz(integrand,ztable,axis=0)
+    return result
+
+
+def DELTA_Cl_HIxmag(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = "CV"):
+    """zf is mean redshift of foregrounds, dzf is half the width of the bin. Same goes for zb and dzb.
+    power_spectra_list needs to be a list [ClHIHI, Clgg, ClHIXmag].
+    Example [C_l_HIHI_CAMB, C_l_gg_CAMB, Cl_HIxmag_CAMB].
+    SURVEY == CV means cosmic variance limited survey."""
+
+
+    zfmin = zf - dzf; zfmax = zf+dzf
+    zbmin = zb-dzb; zbmax = zb+dzb
+    ClHIHIfunc, Clggfunc, Cl_HIxmagfunc = power_spectra_list
+
+
+    #perfect survey:
+    if SURVEY == "CV":
+        Cshot = np.zeros(len(ltable)); N_ell = np.zeros(len(ltable));
+        fsky = 1; d_ell = 1;
+
+    else:
+        return ValueError("only perfect survey implemented")
+    X2 = Cl_HIxmagfunc(ltable, zf, dzf, zb, dzb)**2
+    HIHI = ClHIHIfunc(ltable, zfmin, zfmax) + Cshot
+    gg = Clggfunc(ltable, zbmin, zbmax) + N_ell
+    num = X2 + HIHI*gg
+    denom = (2*ltable+1) * d_ell * fsky
+    result = np.sqrt(num/denom)
+    return result
+
+def S2N(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = "CV"):
+    delt = DELTA_Cl_HIxmag(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = SURVEY)
+    signal = power_spectra_list[2](ltable, zf, dzf, zb, dzb)
+    return signal/delt
+
+
+
+
+
+
+
+
+
+###########################################################################
+###########################################################################
+############### now some functions from the zhang and pen paper
+###########################################################################
+###########################################################################
+
+#alpha:
+def alpha(z, experiment):
+    if experiment["Name"] == "SKA" and experiment["S_area"] == 25600:
+        #for 25600 sq deg SKA, 4 sigma detection threshold
+        alpha_interp_table= [[0, 0.5, 1., 1.5, 2., 2.5, 2.8],[-.5, -0.1, 0.8, 2.2, 4.2, 6.8, 8.8 ]] #[z,alpha-1]
+    if experiment["Name"] == "CLAR" and experiment["S_area"] == 160:
+        #for 160 sq deg CLAR, 3 sigma detection threshold
+        alpha_interp_table= [[0, 0.5, 1., 1.5, 2., 2.5, 2.8], [-.5, -0.25, 0.5, 1.5, 3.1, 5., 6.1]]
+    else:
+        raise ValueError("wrong experiment given to alpha, not implemented. use sg instead")
+    z_alpha_table, alpha_minus_one = alpha_interp_table
+    alphatable = np.array(alpha_minus_one) + 1
+
+    alpha_interp = interp1d(z_alpha_table, alphatable, kind = "cubic", bounds_error=None, fill_value=0)
+    return alpha_interp(z)
+
+def sg(z, experiment = CLAR, USE_ALPHA = False): #number count slope. Fit taken from eq 23 in 1611.01322v2
+    """if USE_ALPHA, then sg is just caluclated from alpha"""
+    if USE_ALPHA:
+        return 2/5*alpha(z, experiment)
+    else:
+        print "Caution, s_g is implemented without dependence on the experiment"
+        n0 = 0.132
+        n1 = 0.259
+        n2 = -0.281
+        n3 = 0.691
+        n4 = -0.409
+        n5 = 0.152
+
+        return n0 + n1*z + n2*z**2 + n3*z**3 + n4*z**4 + n5*z**5
+
+
+
+
+
+#The total 21 cm flux of HI rich galaxies:
+def S21(z, MHI):
+    """from eq 1 in Zhang&Pen. returns in mJy, MHI has to be [10^10 solar masses]
+    we assume w = 100km/s!"""
+    return 0.023 * MHI/10**10 * (c / H_0 / rCom(z))**2 * 1 / (1+z) #rCom should be "comoving angular distance". not sure if that's right
+
+#the system temperature per beam:
+def Ssys(z, experiment):
+    """experiment is a dict"""
+    Tsys = experiment["Tsys"] #[K]
+    Aeff = experiment["Aeff"] #[m^2]
+    t_int = experiment["t_int"] #[hours] for each FOV!
+
+    fac1 = 0.032 * Tsys / 30
+    fac2 = 5e4/Aeff
+    fac3 = np.sqrt( (1+z)/t_int )
+    return fac1 * fac2 * fac3
+
+n_0 = 0.014 * h**3 #[Mpc^-3]
+Mstar = 10**9.55 * h**(-2) #[solar masses]
+gamma = 1.2
+
+#schechter function, equation 4:
+def n_schechter(M):
+    """we set z=0!"""
+    fac1 = (M/Mstar)**(-gamma)
+    fac2 = np.exp( -M / Mstar)
+    return n_0 * fac1 * fac2
+
+def M_HI_min(z, F): #minimum hydrogen mass in galaxy to be detected
+    """z redshift, F is flux limit for detection, F = Ssys*n. Derivation of this is based on
+    equations 3 and 2, done in amadeus' handwritten notes on 23rd of march
+    """
+    fac1 = 1.39 * 10**10 * (rCom(z) * H_0 / c)**2 * (1+z)
+    fac2 = F / 0.032
+
+    return fac1 * fac2
+
+
+def M_HI_min_z(z, n, experiment): #minimum hydrogen mass in galaxy to be detected
+    """z redshift, experiment is dict. equation 3
+    """
+    z = np.atleast_1d(z)
+    tsy = experiment["Tsys"]
+    aef = experiment["Aeff"]
+    t = experiment["t_int"]
+    fac1 = n * 1.39 * 10**10 #solar masses
+    fac2 = (rCom(z)*H_0/c)**2 * (1+z)**(3/2)
+    fac3 = np.sqrt( 1/t) * tsy/30 * 5e4/aef
+    return fac1*fac2*fac3
+
+
+def nrho_HI_z(z, n, experiment, Nint = 2000):
+    """density of HI galaxies with flux bigger than n * Ssys(z).
+    """
+    M_HI_lim = M_HI_min_z(z, n, experiment)
+
+    Mint_by_Mstar = np.logspace(2,-6,Nint) #runs backwards
+    Mint = Mint_by_Mstar * Mstar
+    integrand = n_schechter(Mint)
+
+    integral = integrate.cumtrapz( -integrand, Mint, initial = 0)
+    val = interp1d(Mint[::-1], integral[::-1], kind='linear', bounds_error=False)
+
+
+    rho_lim = val(M_HI_lim)
+
+#     return rho_lim
+    return rho_lim/Mstar    #this is not what is written in the paper,
+                            #typo! (dM should be dM/M*)
+
+
+def nrho_HI(z, F, Nint = 2000):
+    """density of HI galaxies with flux bigger than F. NOTE:
+    """
+    F = np.atleast_1d(F)
+    M_HI_lim = M_HI_min(z, F)
+
+    Mint_by_Mstar = np.logspace(2,-6,Nint) #runs backwards
+    Mint = Mint_by_Mstar * Mstar
+    integrand = n_schechter(Mint)
+
+    integral = integrate.cumtrapz( -integrand, Mint, initial = 0)
+    val = interp1d(Mint[::-1], integral[::-1], kind='linear', bounds_error=False)
+
+
+    rho_lim = val(M_HI_lim)
+
+#     return rho_lim
+    return rho_lim/Mstar    #this is not what is written in the paper,
+                            #but it reproduces their results perfectly. I suspect a typo.. (dM should be dM/M*)
+
+
+
+
+def dNdz(z, n, experiment, Nderiv = 1000, RETURN_PARTS = False):
+    """derivative of abundance of 21cm emitting galaxies wrt z.
+    for explanation of Fdelta look up N_HI"""
+    z = np.atleast_1d(z)
+    F = n * Ssys(z, experiment)
+
+    solidangle = experiment["S_area"] * (pi/180)**2
+
+    radius = rCom #comoving
+#     radius = lambda zzz: rCom(zzz)/(1+zzz) #physical
+
+    rtab2 = radius(z)**2
+
+    #for derivative:
+    zmin = 0.
+    zmax = np.amax(z) + 0.2
+    ztab_fine = np.linspace( zmin, zmax, Nderiv)
+    rtab_fine = radius(ztab_fine)
+    drdztab_fine = np.gradient(rtab_fine, ztab_fine)
+    drdz = interp1d(ztab_fine, drdztab_fine, kind='linear', bounds_error=False)
+    drdztab = drdz(z)
+
+#     ndens = nrho_HI(z, F)
+    ndens = nrho_HI_z(z, n, experiment)
+
+    if RETURN_PARTS:
+        return solidangle, drdztab, rtab2, ndens
+
+    return solidangle * drdztab * rtab2 * ndens
+
+
+def N_HI(z, n, experiment, NINT = 2000, Nderiv = 1000):
+    """
+    This should reproduce fig 1 and 2. z redshift, F flux, both arrays of same length and corresponding values.
+    NINT is for numerical integration and Nderiv for derivation in dNdz.
+    curiosity Fdelta is there to help derivation wrt F which is not an argument. If Fdelta is number or
+    array of length of z it is added to one and multiplied to F = n*Ssys, which is then used for the rest of
+    the calculations here.
+    """
+    z = np.atleast_1d(z)
+    zint = np.linspace(0.01, np.amax(z), NINT)
+
+    integrand = dNdz(zint, n, experiment, Nderiv = Nderiv)
+
+    integral = integrate.cumtrapz( integrand, zint, initial = 0)
+    val = interp1d(zint, integral, kind='linear', bounds_error=False)
+    result = val(z)
+
+    return result
+
+
+
+def G(z, zmin, zmax, nsig, experiment, NINT = 1000): #kernel of the bg magnification
+    """zmin and zmax are edges of galaxy distribution we're looking at
+    experiment needs to be SKA etc because of alpha"""
+    z = np.atleast_1d(z)
+    zdist = np.linspace(zmin, zmax, NINT)
+    chi = rCom( z )
+    chidist = rCom(zdist) #of galaxy distribution, etiher bg or fg
+#     wmatrix = w_geometry(chi, chidist)
+    ntab = dNdz(zdist, nsig, experiment)
+    Ngal = np.trapz(ntab, zdist)
+    alphatab = alpha(zdist, experiment)
+#     alphatab = 5/2*sg(zdist) #same thing
+    integrand1 = ntab * 2 * (alphatab -1 )
+    integrand2 = ntab * 2 * (alphatab -1 ) / chidist
+    integral1 = np.trapz( integrand1, zdist)
+    integral2 = np.trapz( integrand2, zdist)
+    return ((1+z)/Ngal) * (chi * integral1 - chi**2 * integral2)
+
+def Cl_gxmag_CAMB(ltable, zf, delta_zf, zb, delta_zb, nsig, experiment, Nint = 500):
+    zftab = np.linspace(zf-delta_zf, zf+delta_zf, Nint)
+    zbmin = zb - delta_zb
+    zbmax = zb + delta_zb
+    rtab = rCom(zftab)
+    ntab = dNdz(zftab, nsig, experiment)
+    Ngal = np.trapz(ntab, zftab)
+    integrand=np.zeros((len(zftab),len(ltable)))
+    for il in range(len(ltable)):
+        ell = ltable[il]
+        pknltab = np.array([pknl(( ell)/rCom(zzz), zzz) for zzz in zftab])
+        #we divide by r**3 because we go from Delta_m to P_m
+        integrand[:,il]= 1/rtab**3 * pknltab * G(zftab, zbmin, zbmax, nsig, experiment) * dNdz(zftab, nsig, experiment) * rtab
+    fac1 = 3 * Omega_m * H_0**2  / c**2
+    fac2 = np.pi**2#/ ltable**3 #we use k^3 Delta_m = l^3/r^3 Delta_m = P_m
+    fac3 = 1 / Ngal
+    result= fac1 * fac2 * fac3 * np.trapz(integrand,zftab,axis=0)
+    return result * h**6
