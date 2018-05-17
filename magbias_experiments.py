@@ -1,3 +1,5 @@
+import numpy as np
+
 #this is where we store the experiment parameters for noise:
 
 n = 2 #n is the detection threshold (in #sigma)
@@ -14,41 +16,47 @@ ttot = 5 * 365 * 24 #[hours], 5 years
 
 
 
-SKA = { "Aeff" : 6e5, #[m2]
+SKA_zhangpen = { "Aeff" : 6e5, #[m2]
       "Tsys" : 30, #[K]
       "t_int" : ttot * FOV_SKA / A_SKA,
        "S_area": A_SKA,
-       "Name" : "SKA"
+       "Name" : "SKA_zhangpen"
       }
 
-CLAR = {
+CLAR_zhangpen = {
     "Aeff" : 5e4, #[m2]
     "Tsys" : 30, #[K]
     "t_int": ttot * FOV_CLAR / A_CLAR,
     "S_area": A_CLAR,
-    "Name" : "CLAR"
+    "Name" : "CLAR_zhangpen"
 }
 
-#
-# hirax = {
-#     'mode':             'interferom',            # Interferometer or single dish
-#     'Ndish':            1024,                 # No. of dishes
-#     'Nbeam':            1,                # No. of beams (for multi-pixel detectors)
-#     'Ddish':            6.,               # Single dish diameter [m]
-#     'Tinst':            50.*(1e3),         # System temp. [mK]
-#     #'nu_crit':          1000.,            #critical frequency, UNCLEAR
-#     'survey_dnutot':    400.,              # Total bandwidth of *entire* survey [MHz]
-#     'survey_numax':     800.,             # Max. freq. of survey
-#     'dnu':              0.4,               # Bandwidth of single channel [MHz]
-#     'pointings':        1,                  # number of pointings in drift scan
-#     'obs_per_day':      12.,                 #observation hours per day
-#     # 'Sarea':            2*np.pi, #half sky    # Total survey area [radians^2]
-#     'Dmax':             307.,               # Max. interferom. baseline [m] UNCLEAR
-#     'Dmin':             7.,                 # Min. interferom. baseline [m] UNCLEAR
-#     'wiggleroom':       1.,                  #wiggle room between dishes
-#     'k_nl0':            0.2             # inv Mpc, nonlinear k cutoff
-# }
-# hirax.update(SURVEY)
-# cb_hirax=dict(hirax)
-#
-# cb_hirax.update({'n(x)':             "/Users/amadeus/Documents/PhD/work/bao21cm/hirax/hirax_Ndish1024_baseline1.dat"})
+SKA = {
+    "mode":             "single_dish",
+    "Ndish":            133+64,
+    "Tsys":             30 * 1e3, #mK
+    "S_area":           7.6,    #25000 sq deg = 7.6 [sterrad]
+    "t_int":            8760,   #1 yr in [h], for comparison with hirax
+    "Ddish":            (133 * 15 + 64 * 13.5) / (133+64), #average [m]
+    "Nbeam":            1,
+    "Name" :            "SKA",
+    }
+
+
+hirax = {
+    "mode":             'interferometer',
+    'Ndish':            1024,                 # No. of dishes
+    'Nbeam':            1,                # No. of beams (for multi-pixel detectors)
+    'Ddish':            6.,               # Single dish diameter [m]
+    "t_int":            8760,               #1 year in [h]
+    'Tsys':            50.*(1e3),         # System temp. [mK]
+    #'nu_crit':          1000.,            #critical frequency, UNCLEAR
+    'survey_dnutot':    400.,              # Total bandwidth of *entire* survey [MHz]
+    'survey_numax':     800.,             # Max. freq. of survey
+    'dnu':              0.4,               # Bandwidth of single channel [MHz]
+    'S_area':            np.pi,          # fsky = 1/4 Total survey area [radians^2]
+    'Dmax':             307.,               # Max. interferom. baseline [m]
+    'Dmin':             7.,                 # Min. interferom. baseline [m]
+}
+cb_hirax=dict(hirax) #same but with actual baseline file.
+cb_hirax.update({'n(x)':             "/Users/amadeus/Documents/PhD/work/bao21cm/hirax/hirax_Ndish1024_baseline1.dat"})

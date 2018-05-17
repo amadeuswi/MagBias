@@ -1,6 +1,7 @@
 from __future__ import division
 import os
 import numpy as np
+import healpy as hp
 from numpy import pi,sin,cos,tan,e,arctan,arcsin,arccos,sqrt
 import sys
 from scipy import integrate
@@ -10,7 +11,7 @@ from scipy.interpolate import interp2d, interp1d
 
 
 from homogen import hom, cosmo as cosmologies
-from magbias_experiments import SKA, CLAR, n
+from magbias_experiments import SKA_zhangpen, CLAR_zhangpen, SKA, hirax, n
 cosmo = cosmologies.std
 c=hom.c
 
@@ -18,6 +19,7 @@ c=hom.c
 Mpctom=3.0857*10**22
 mtoMpc=1/Mpctom
 
+HRS_MHZ = 1e6*60**2 #conversion, 1 h = 1e6*60**2 MHz^-1
 
 h = cosmo['h']; sigma8 = cosmo['sigma_8']; n_s = cosmo['ns']; Omega_m = cosmo['omega_M_0']; H_0 = cosmo['H_0']; Omega_lambda = cosmo['omega_lambda_0']
 H_z = hom.H_z; E_z = hom.E_z
@@ -225,7 +227,7 @@ def C_l_gg_CAMB(ltable,zmin,zmax, Nint = 500):
     return result
 
 
-def DELTA_Cl_HIxmag(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = "CV"):
+def DELTA_Cl_HIxmag(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = "CV", nside = 256):
     """zf is mean redshift of foregrounds, dzf is half the width of the bin. Same goes for zb and dzb.
     power_spectra_list needs to be a list [ClHIHI, Clgg, ClHIXmag].
     Example [C_l_HIHI_CAMB, C_l_gg_CAMB, Cl_HIxmag_CAMB].
@@ -236,18 +238,31 @@ def DELTA_Cl_HIxmag(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = "CV")
     zbmin = zb-dzb; zbmax = zb+dzb
     ClHIHIfunc, Clggfunc, Cl_HIxmagfunc = power_spectra_list
 
-
+    d_ell = np.abs(np.mean ( ltable[:-1] - ltable[1:]))
     #perfect survey:
-    if SURVEY == "CV":
+    if type(SURVEY)==str and SURVEY == "CV":
         Cshot = np.zeros(len(ltable)); N_ell = np.zeros(len(ltable));
-        fsky = 1; d_ell = 1;
+        fsky = 1;
+    elif type(SURVEY)==dict:
+        print "We assume a perfect galaxy survey!"
+        Cshot = np.zeros(len(ltable)); fsky = SURVEY["S_area"] / (4*np.pi);
+        if SURVEY["mode"] == "interferometer":
+            print "calculating interferometer noise..."
+            N_ell = Cl_interferom_noise(ltable, zf - dzf/2, zf + dzf/2, SURVEY, Nint = 500)
+        elif SURVEY["mode"] == "single_dish":
+            print "calculating single dish autocorrelation noise"
+            N_ell = noise_cls_single_dish(ltable, ztonu21(zf), SURVEY, nside) * np.ones( len(ltable) )
+            # ell_noise = np.copy(ltable)
+        else:
+            raise ValueError("dict must contain key 'mode'")
+    elif type(SURVEY) == list:
+        raise ValueError("Galaxy survey shot noise not implemented yet")
+    else: raise ValueError("wrong SURVEY")
 
-    else:
-        return ValueError("only perfect survey implemented")
     X2 = Cl_HIxmagfunc(ltable, zf, dzf, zb, dzb)**2
     HIHI = ClHIHIfunc(ltable, zfmin, zfmax) + Cshot
     gg = Clggfunc(ltable, zbmin, zbmax) + N_ell
-    num = X2 + HIHI*gg
+    num = X2 + (HIHI + N_ell) * (gg + Cshot)
     denom = (2*ltable+1) * d_ell * fsky
     result = np.sqrt(num/denom)
     return result
@@ -276,7 +291,7 @@ def alpha(z, experiment):
     if experiment["Name"] == "SKA" and experiment["S_area"] == 25600:
         #for 25600 sq deg SKA, 4 sigma detection threshold
         alpha_interp_table= [[0, 0.5, 1., 1.5, 2., 2.5, 2.8],[-.5, -0.1, 0.8, 2.2, 4.2, 6.8, 8.8 ]] #[z,alpha-1]
-    if experiment["Name"] == "CLAR" and experiment["S_area"] == 160:
+    if experiment["Name"] == "CLAR_zhangpen" and experiment["S_area"] == 160:
         #for 160 sq deg CLAR, 3 sigma detection threshold
         alpha_interp_table= [[0, 0.5, 1., 1.5, 2., 2.5, 2.8], [-.5, -0.25, 0.5, 1.5, 3.1, 5., 6.1]]
     else:
@@ -287,7 +302,7 @@ def alpha(z, experiment):
     alpha_interp = interp1d(z_alpha_table, alphatable, kind = "cubic", bounds_error=None, fill_value=0)
     return alpha_interp(z)
 
-def sg(z, experiment = CLAR, USE_ALPHA = False): #number count slope. Fit taken from eq 23 in 1611.01322v2
+def sg(z, experiment = CLAR_zhangpen, USE_ALPHA = False): #number count slope. Fit taken from eq 23 in 1611.01322v2
     """if USE_ALPHA, then sg is just caluclated from alpha"""
     if USE_ALPHA:
         return 2/5*alpha(z, experiment)
@@ -489,3 +504,82 @@ def Cl_gxmag_CAMB(ltable, zf, delta_zf, zb, delta_zb, nsig, experiment, Nint = 5
     fac3 = 1 / Ngal
     result= fac1 * fac2 * fac3 * np.trapz(integrand,zftab,axis=0)
     return result * h**6
+
+
+
+############################################################
+############################################################
+############calculate beam and noise:
+############################################################
+############################################################
+def pix_noise(exp_dict, dnu, nside = 256):
+    """calculates the pixel noise from a dict with experiment parameters and the frequency."""
+    #load dict:
+    NPIX = hp.nside2npix(nside)
+    t_system = exp_dict["Tsys"]
+    nbeams = exp_dict["Nbeam"]
+    time_tot = exp_dict["t_int"]
+    ndish = exp_dict["Ndish"]
+    fsky = exp_dict["S_area"] / (4 * np.pi)
+    #calculate the noise RMS :
+    DTpix = t_system / np.sqrt(nbeams * time_tot * HRS_MHZ * dnu * ndish / (NPIX * fsky))  #noise RMS per pixel
+    return DTpix
+
+def beam_FWHM(exp_dict, mean_nu):
+    """returns the beam fwhm of that experiment in the frequency bin"""
+    #calculate the beam FWHM:
+    mean_lam = c / 1e6 / mean_nu #[m]
+    Ddish = exp_dict["Ddish"]
+
+    theta_fwhm = mean_lam / Ddish
+    return theta_fwhm
+
+def noise_cls_single_dish(ltab, nu, exp_dict, nside): #taken from amadeus' master thesis eq. 18
+    sigpix = pix_noise(exp_dict, nu, nside = nside)
+    sigb = beam_FWHM(exp_dict, nu) / np.sqrt( 8 * np.log(2) )
+    W_ell = np.exp( -ltab**2 * sigb**2) #beam smoothing function
+    ompix = 4 * np.pi / hp.nside2npix(nside)
+    return sigpix**2 * ompix / W_ell
+
+def n_baseline(u, nu, exp_dict):
+    """depending on the exp_dict either does the simplified calculation, or uses full baseline distribution"""
+    if "n(x)" in exp_dict.keys():
+        print "using n(x) file"
+        x, nx = np.loadtxt(exp_dict["n(x)"], unpack = True)
+        utab=x*nu #conversion from x to u
+        nb_utab=nx/nu**2
+        nb_uinterp = interp1d(utab, nb_utab, kind='linear', bounds_error=False)
+        return nb_uinterp(u)
+
+    Na = exp_dict["Ndish"]
+    Dmax = exp_dict["Dmax"]
+    Dmin = exp_dict["Dmin"]
+    lam = c/ (nu * 1e6) #[m]
+
+    return Na * (Na-1) * lam**2 / ( 2 * np.pi * (Dmax**2 - Dmin**2))
+
+def noise_P_interferometer(ktab, nu, exp_dict):
+    lam = c/ (nu * 1e6) #[m]
+    z = nutoz21(nu)
+    r = rCom(z) #[Mpc]
+    t_system = exp_dict["Tsys"] #[whatever]
+    Sarea = exp_dict["S_area"] #[sterrad]
+    time_tot = exp_dict["t_int"] * 60**2 #[s]
+
+    y = c / H_z(z) * (1+z)**2 / (nu21emit * 1e6) #[Mpc s]
+    theta = beam_FWHM(exp_dict, nu) #[rad]
+    u = r * ktab / (2*np.pi)
+    Ae = (exp_dict["Ddish"]/2)**2 * np.pi #collecting area [m2]
+    num = (lam*mtoMpc)**4 * r**2 * y * t_system**2 * Sarea #[Mpc7 s mK sterrad]
+    denom = 2 * (Ae*mtoMpc**2)**2 * theta**2 * n_baseline(u, nu, exp_dict) * time_tot #[Mpc4 sterrad s]
+    return num/denom #[Mpc3 mK]
+
+def Cl_interferom_noise(ltable,zmin,zmax, exp_dict, Nint = 500):
+    """arguments: ell array, zmin, zmax
+    returns: Cl as array"""
+    ztable = np.linspace(zmin, zmax, Nint)
+    integrand=np.zeros([len(ztable),len(ltable)])
+    for l in range(len(ltable)):
+        integrand[:,l]=np.array([E_z(zzz)*(W_tophat(zzz,zmin,zmax)/rCom(zzz))**2*noise_P_interferometer((ltable[l])/rCom(zzz), ztonu21(zzz), exp_dict) for zzz in ztable])
+    result=H_0/c*np.trapz(integrand,ztable,axis=0)
+    return result
