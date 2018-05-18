@@ -3,3 +3,4 @@
 .DS_Store
 magnification_IM.pdf
 check_noise_cl.ipynb
+plots/*

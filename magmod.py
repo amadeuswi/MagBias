@@ -213,7 +213,7 @@ def C_l_HIHI_CAMB(ltable,zmin,zmax, Nint = 500):
         #for the moment we divide out T_obs to compare with the galaxy results
 #         integrand[:,l]=E_z(ztable)*(W_tophat(ztable,zmin,zmax)/rCom(ztable))**2*pknl((ltable[l])/rCom(ztable), ztable)
         integrand[:,l]= np.array([E_z(zzz)*(W_tophat(zzz,zmin,zmax)/rCom(zzz))**2*pknl((ltable[l])/rCom(zzz), zzz) for zzz in ztable])
-    result=bHI* H_0/c*np.trapz(integrand,ztable,axis=0)
+    result=bHI**2 * H_0/c*np.trapz(integrand,ztable,axis=0)
     return result
 
 def C_l_gg_CAMB(ltable,zmin,zmax, Nint = 500):
@@ -223,7 +223,7 @@ def C_l_gg_CAMB(ltable,zmin,zmax, Nint = 500):
     integrand=np.zeros([len(ztable),len(ltable)])
     for l in range(len(ltable)):
         integrand[:,l]=np.array([E_z(zzz)*(W_tophat(zzz,zmin,zmax)/rCom(zzz))**2*pknl((ltable[l])/rCom(zzz), zzz) for zzz in ztable])
-    result=bgal* H_0/c*np.trapz(integrand,ztable,axis=0)
+    result=bgal**2 * H_0/c*np.trapz(integrand,ztable,axis=0)
     return result
 
 
@@ -238,7 +238,9 @@ def DELTA_Cl_HIxmag(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = "CV",
     zbmin = zb-dzb; zbmax = zb+dzb
     ClHIHIfunc, Clggfunc, Cl_HIxmagfunc = power_spectra_list
 
-    d_ell = np.abs(np.mean ( ltable[:-1] - ltable[1:]))
+    # d_ell = np.abs(np.mean ( ltable[:-1] - ltable[1:]))
+    d_ell = 1
+    print "we assume d_ell = 1"
     #perfect survey:
     if type(SURVEY)==str and SURVEY == "CV":
         Cshot = np.zeros(len(ltable)); N_ell = np.zeros(len(ltable));
@@ -246,7 +248,7 @@ def DELTA_Cl_HIxmag(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = "CV",
     else:
         if type(SURVEY) == list:
             hisurv = SURVEY[0]
-            Cshot = shotnoise(zb, dzb, SURVEY);#Cshot needs the list of surveys
+            Cshot = shotnoise(zb, dzb, SURVEY[1]);#Cshot needs the list of surveys
         elif type(SURVEY)==dict:
             hisurv = SURVEY
             print "We assume a perfect galaxy survey!"
@@ -255,7 +257,7 @@ def DELTA_Cl_HIxmag(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = "CV",
         fsky = hisurv["S_area"] / (4*np.pi);
         if hisurv["mode"] == "interferometer":
             print "calculating interferometer noise..."
-            N_ell = Cl_interferom_noise(ltable, zf - dzf/2, zf + dzf/2, hisurv, Nint = 2000)
+            N_ell = Cl_interferom_noise(ltable, zfmin, zfmax, hisurv, Nint = 2000)
         elif hisurv["mode"] == "single_dish":
             print "calculating single dish autocorrelation noise"
             N_ell = noise_cls_single_dish(ltable, ztonu21(zf), hisurv, nside) * np.ones( len(ltable) )
@@ -264,8 +266,8 @@ def DELTA_Cl_HIxmag(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = "CV",
             raise ValueError("dict must contain key 'mode'")
 
     X2 = Cl_HIxmagfunc(ltable, zf, dzf, zb, dzb)**2
-    HIHI = ClHIHIfunc(ltable, zfmin, zfmax) + Cshot
-    gg = Clggfunc(ltable, zbmin, zbmax) + N_ell
+    HIHI = ClHIHIfunc(ltable, zfmin, zfmax)
+    gg = Clggfunc(ltable, zbmin, zbmax)
     num = X2 + (HIHI + N_ell) * (gg + Cshot)
     denom = (2*ltable+1) * d_ell * fsky
     result = np.sqrt(num/denom)
@@ -541,7 +543,7 @@ def beam_FWHM(exp_dict, mean_nu):
 def noise_cls_single_dish(ltab, nu, exp_dict, nside): #taken from amadeus' master thesis eq. 18
     sigpix = pix_noise(exp_dict, nu, nside = nside)
     sigb = beam_FWHM(exp_dict, nu) / np.sqrt( 8 * np.log(2) )
-    W_ell = np.exp( -ltab**2 * sigb**2) #beam smoothing function
+    W_ell = np.exp( -ltab**2 * sigb**2) + 1e-9 #beam smoothing function. added a constant to make it never actually zero
     ompix = 4 * np.pi / hp.nside2npix(nside)
     return sigpix**2 * ompix / W_ell
 
@@ -588,10 +590,7 @@ def Cl_interferom_noise(ltable,zmin,zmax, exp_dict, Nint = 500):
     result=H_0/c*np.trapz(integrand,ztable,axis=0)
     return result
 
-def shotnoise(z, dz, exp_dict_list, NINT = 200):
-    hisurv, galsurv = exp_dict_list
-    # sarea = hisurv["S_area"]
-    sarea = 4*np.pi
+def shotnoise(z, dz, galsurv, NINT = 200):
     print "We use all sky for calculating N(z)"
     zmin = z - dz/2
     zmax = z + dz/2
@@ -599,5 +598,5 @@ def shotnoise(z, dz, exp_dict_list, NINT = 200):
     dNdzinterp = interp1d(ztab, dNdztab, kind='linear', bounds_error=False)
     z_integrate = np.linspace(zmin,zmax, NINT)
     dNzdOm = np.trapz(dNdzinterp(z_integrate), z_integrate)
-    Nz = dNzdOm / (np.pi/180)**2 * sarea #changing degrees to rad, and multiplying with survey area
+    Nz = dNzdOm / (np.pi/180)**2 * 4 * np.pi #changing degrees to rad, and multiplying with survey area
     return 4*pi/Nz #shot noise!
