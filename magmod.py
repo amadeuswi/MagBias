@@ -243,21 +243,25 @@ def DELTA_Cl_HIxmag(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = "CV",
     if type(SURVEY)==str and SURVEY == "CV":
         Cshot = np.zeros(len(ltable)); N_ell = np.zeros(len(ltable));
         fsky = 1;
-    elif type(SURVEY)==dict:
-        print "We assume a perfect galaxy survey!"
-        Cshot = np.zeros(len(ltable)); fsky = SURVEY["S_area"] / (4*np.pi);
-        if SURVEY["mode"] == "interferometer":
+    else:
+        if type(SURVEY) == list:
+            hisurv = SURVEY[0]
+            Cshot = shotnoise(zb, dzb, SURVEY);#Cshot needs the list of surveys
+        elif type(SURVEY)==dict:
+            hisurv = SURVEY
+            print "We assume a perfect galaxy survey!"
+            Cshot = np.zeros(len(ltable));
+        else: raise ValueError("wrong SURVEY")
+        fsky = hisurv["S_area"] / (4*np.pi);
+        if hisurv["mode"] == "interferometer":
             print "calculating interferometer noise..."
-            N_ell = Cl_interferom_noise(ltable, zf - dzf/2, zf + dzf/2, SURVEY, Nint = 500)
-        elif SURVEY["mode"] == "single_dish":
+            N_ell = Cl_interferom_noise(ltable, zf - dzf/2, zf + dzf/2, hisurv, Nint = 2000)
+        elif hisurv["mode"] == "single_dish":
             print "calculating single dish autocorrelation noise"
-            N_ell = noise_cls_single_dish(ltable, ztonu21(zf), SURVEY, nside) * np.ones( len(ltable) )
+            N_ell = noise_cls_single_dish(ltable, ztonu21(zf), hisurv, nside) * np.ones( len(ltable) )
             # ell_noise = np.copy(ltable)
         else:
             raise ValueError("dict must contain key 'mode'")
-    elif type(SURVEY) == list:
-        raise ValueError("Galaxy survey shot noise not implemented yet")
-    else: raise ValueError("wrong SURVEY")
 
     X2 = Cl_HIxmagfunc(ltable, zf, dzf, zb, dzb)**2
     HIHI = ClHIHIfunc(ltable, zfmin, zfmax) + Cshot
@@ -544,7 +548,7 @@ def noise_cls_single_dish(ltab, nu, exp_dict, nside): #taken from amadeus' maste
 def n_baseline(u, nu, exp_dict):
     """depending on the exp_dict either does the simplified calculation, or uses full baseline distribution"""
     if "n(x)" in exp_dict.keys():
-        print "using n(x) file"
+        # print "using n(x) file"
         x, nx = np.loadtxt(exp_dict["n(x)"], unpack = True)
         utab=x*nu #conversion from x to u
         nb_utab=nx/nu**2
@@ -583,3 +587,17 @@ def Cl_interferom_noise(ltable,zmin,zmax, exp_dict, Nint = 500):
         integrand[:,l]=np.array([E_z(zzz)*(W_tophat(zzz,zmin,zmax)/rCom(zzz))**2*noise_P_interferometer((ltable[l])/rCom(zzz), ztonu21(zzz), exp_dict) for zzz in ztable])
     result=H_0/c*np.trapz(integrand,ztable,axis=0)
     return result
+
+def shotnoise(z, dz, exp_dict_list, NINT = 200):
+    hisurv, galsurv = exp_dict_list
+    # sarea = hisurv["S_area"]
+    sarea = 4*np.pi
+    print "We use all sky for calculating N(z)"
+    zmin = z - dz/2
+    zmax = z + dz/2
+    ztab, dNdztab = np.loadtxt(galsurv["dNdz"], unpack = True)
+    dNdzinterp = interp1d(ztab, dNdztab, kind='linear', bounds_error=False)
+    z_integrate = np.linspace(zmin,zmax, NINT)
+    dNzdOm = np.trapz(dNdzinterp(z_integrate), z_integrate)
+    Nz = dNzdOm / (np.pi/180)**2 * sarea #changing degrees to rad, and multiplying with survey area
+    return 4*pi/Nz #shot noise!
