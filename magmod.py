@@ -543,9 +543,9 @@ def beam_FWHM(exp_dict, mean_nu):
 def noise_cls_single_dish(ltab, nu, exp_dict, nside): #taken from amadeus' master thesis eq. 18
     sigpix = pix_noise(exp_dict, nu, nside = nside)
     sigb = beam_FWHM(exp_dict, nu) / np.sqrt( 8 * np.log(2) )
-    W_ell = np.exp( -ltab**2 * sigb**2) + 1e-9 #beam smoothing function. added a constant to make it never actually zero
+    oneover_W_ell = np.exp( ltab**2 * sigb**2) #beam smoothing function. added a constant to make it never actually zero
     ompix = 4 * np.pi / hp.nside2npix(nside)
-    return sigpix**2 * ompix / W_ell
+    return sigpix**2 * ompix * oneover_W_ell
 
 def n_baseline(u, nu, exp_dict):
     """depending on the exp_dict either does the simplified calculation, or uses full baseline distribution"""
