@@ -7,7 +7,7 @@ import sys
 from scipy import integrate
 import scipy.special as sp
 from scipy.interpolate import interp2d, interp1d
-
+from time import clock #timing
 
 
 from homogen import hom, cosmo as cosmologies
@@ -18,6 +18,8 @@ c=hom.c
 #unit conversions
 Mpctom=3.0857*10**22
 mtoMpc=1/Mpctom
+INF_NOISE = 1e200 # Very large finite no. used to denote infinite noise
+
 
 HRS_MHZ = 1e6*60**2 #conversion, 1 h = 1e6*60**2 MHz^-1
 
@@ -125,7 +127,10 @@ bHI = 1
 bgal = 1
 
 #camb power spectrum:
-pknl_root = "./PkNL/"
+if os.path.exists('/mnt/lustre/users/awitzemann/'): #this means we are chpc
+    pknl_root = "/mnt/lustre/users/awitzemann/up/MagBias/PkNL/"
+else:
+    pknl_root = "/Users/amadeus/Documents/PhD/work/MagBias/PkNL/"
 filelist =  np.sort(os.listdir(pknl_root))
 # print "CHECK IF THIS IS IN ORDER:"
 # print filelist
@@ -236,12 +241,16 @@ def DELTA_Cl_HIxmag(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = "CV",
 
     zfmin = zf - dzf; zfmax = zf+dzf
     zbmin = zb-dzb; zbmax = zb+dzb
-    ClHIHIfunc, Clggfunc, Cl_HIxmagfunc = power_spectra_list
+    # ClHIHIfunc, Clggfunc, Cl_HIxmagfunc = power_spectra_list
+    HIHI, gg, XX = power_spectra_list
+    X2 = XX**2
+
 
     # d_ell = np.abs(np.mean ( ltable[:-1] - ltable[1:]))
     d_ell = 1
     print "we assume d_ell = 1"
     #perfect survey:
+    noisestart = clock()
     if type(SURVEY)==str and SURVEY == "CV":
         Cshot = np.zeros(len(ltable)); N_ell = np.zeros(len(ltable));
         fsky = 1;
@@ -257,25 +266,32 @@ def DELTA_Cl_HIxmag(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = "CV",
         fsky = hisurv["S_area"] / (4*np.pi);
         if hisurv["mode"] == "interferometer":
             print "calculating interferometer noise..."
-            N_ell = Cl_interferom_noise(ltable, zfmin, zfmax, hisurv, Nint = 2000)
+            N_ell = Cl_interferom_noise(ltable, zfmin, zfmax, hisurv)
         elif hisurv["mode"] == "single_dish":
             print "calculating single dish autocorrelation noise"
             N_ell = noise_cls_single_dish(ltable, ztonu21(zf), hisurv, nside) * np.ones( len(ltable) )
             # ell_noise = np.copy(ltable)
         else:
             raise ValueError("dict must contain key 'mode'")
-
-    X2 = Cl_HIxmagfunc(ltable, zf, dzf, zb, dzb)**2
-    HIHI = ClHIHIfunc(ltable, zfmin, zfmax)
-    gg = Clggfunc(ltable, zbmin, zbmax)
+    start = clock()
+    # print "noise took {} s".format(start - noisestart)
+    # X2 = Cl_HIxmagfunc(ltable, zf, dzf, zb, dzb)**2
+    # HIHI = ClHIHIfunc(ltable, zfmin, zfmax)
+    # gg = Clggfunc(ltable, zbmin, zbmax)
+    # print "it took {} seconds to compute all signals".format(clock() - start)
     num = X2 + (HIHI + N_ell) * (gg + Cshot)
     denom = (2*ltable+1) * d_ell * fsky
     result = np.sqrt(num/denom)
     return result
 
 def S2N(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = "CV"):
+    start = clock()
     delt = DELTA_Cl_HIxmag(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = SURVEY)
-    signal = power_spectra_list[2](ltable, zf, dzf, zb, dzb)
+    mid = clock();
+    # signal = power_spectra_list[2](ltable, zf, dzf, zb, dzb)
+    signal = power_spectra_list[2]
+    end = clock()
+    # print "delta took {}s and signal took {} s".format(mid-start, end-mid)
     return signal/delt
 
 
@@ -537,36 +553,40 @@ def beam_FWHM(exp_dict, mean_nu):
     mean_lam = c / 1e6 / mean_nu #[m]
     Ddish = exp_dict["Ddish"]
 
-    theta_fwhm = mean_lam / Ddish
+    theta_fwhm = 1.22 * mean_lam / Ddish
     return theta_fwhm
 
 def noise_cls_single_dish(ltab, nu, exp_dict, nside): #taken from amadeus' master thesis eq. 18
     sigpix = pix_noise(exp_dict, nu, nside = nside)
     sigb = beam_FWHM(exp_dict, nu) / np.sqrt( 8 * np.log(2) )
-    oneover_W_ell = np.exp( ltab**2 * sigb**2) #beam smoothing function. added a constant to make it never actually zero
+    oneover_W_ell = np.exp( ltab**2 * sigb**2) #beam smoothing function.
     ompix = 4 * np.pi / hp.nside2npix(nside)
     return sigpix**2 * ompix * oneover_W_ell
 
 def n_baseline(u, nu, exp_dict):
-    """depending on the exp_dict either does the simplified calculation, or uses full baseline distribution"""
+    """nu in [MHz] ! depending on the exp_dict either does the simplified calculation, or uses full baseline distribution"""
     if "n(x)" in exp_dict.keys():
         # print "using n(x) file"
+        u = np.atleast_1d(u)
         x, nx = np.loadtxt(exp_dict["n(x)"], unpack = True)
         utab=x*nu #conversion from x to u
         nb_utab=nx/nu**2
-        nb_uinterp = interp1d(utab, nb_utab, kind='linear', bounds_error=False)
-        return nb_uinterp(u)
+        nb_uinterp = interp1d(utab, nb_utab,
+        kind='linear', bounds_error=False, fill_value=1./INF_NOISE)
+        res = nb_uinterp(u)
+        res[np.where(res == 0.)] = 1./ INF_NOISE
+        return res
 
     Na = exp_dict["Ndish"]
     Dmax = exp_dict["Dmax"]
     Dmin = exp_dict["Dmin"]
-    lam = c/ (nu * 1e6) #[m]
+    lam = c/ nu #[m]
 
     return Na * (Na-1) * lam**2 / ( 2 * np.pi * (Dmax**2 - Dmin**2))
 
 def noise_P_interferometer(ktab, nu, exp_dict):
-    lam = c/ (nu * 1e6) #[m]
-    z = nutoz21(nu)
+    lam = c/ nu / 1e6 #[m]
+    z = nutoz21(nu) #takes [MHz]
     r = rCom(z) #[Mpc]
     t_system = exp_dict["Tsys"] #[whatever]
     Sarea = exp_dict["S_area"] #[sterrad]
@@ -580,7 +600,69 @@ def noise_P_interferometer(ktab, nu, exp_dict):
     denom = 2 * (Ae*mtoMpc**2)**2 * theta**2 * n_baseline(u, nu, exp_dict) * time_tot #[Mpc4 sterrad s]
     return num/denom #[Mpc3 mK]
 
-def Cl_interferom_noise(ltable,zmin,zmax, exp_dict, Nint = 500):
+def noise_P_interferometer2(ktab, nu, dnu, exp_dict): #copying the calculation in baofisher
+    lam = c/ nu / 1e6 #[m]
+    z = nutoz21(nu) #takes [MHz]
+    r = rCom(z) #[Mpc]
+    t_system = exp_dict["Tsys"] #[whatever]
+    Sarea = exp_dict["S_area"] #[sterrad]
+    time_tot = exp_dict["t_int"] * 60**2 #[s]
+
+    y = c / H_z(z) * (1+z)**2 / (nu21emit * 1e6) #[Mpc s]
+    theta = beam_FWHM(exp_dict, nu) #[rad]
+    u = r * ktab / (2*np.pi)
+    Ae = (exp_dict["Ddish"]/2)**2 * np.pi #collecting area [m2]
+    num = (lam*mtoMpc)**4 * t_system**2 * Sarea #[Mpc7 s mK sterrad]
+    denom = 2 * nu21emit*1e6 * (Ae*mtoMpc**2)**2 * theta**2 * n_baseline(u, nu, exp_dict) * time_tot #[Mpc4 sterrad s]
+
+    exponent = -y**2 * (dnu/nu21emit)**2 / ( 16* np.log(2))
+    Bpar = np.exp(exponent)
+    return num/denom * Bpar #[Mpc3 mK]
+
+def Cl_interferom_noise(ltable, zmin, zmax, exp_dict): #from mario's mail on May 29th 2018
+    numin = ztonu21(zmax); numax = ztonu21(zmin);
+    nu = (numin+numax)/2
+    dnu = (numax-numin)
+    u = ltable / 2 / np.pi
+    lam = c / 1e6 / nu #[m]
+    Tsys = exp_dict["Tsys"] #[mK]
+    Ae = (exp_dict["Ddish"]/2)**2 * np.pi #[m2]
+    Sarea = exp_dict["S_area"] #[sterrad]
+    ttot = exp_dict["t_int"] * 60**2 #[s]
+    beam = beam_FWHM(exp_dict, nu) #[rad]
+
+    Np = Sarea / beam**2
+    tp = ttot / Np#time per pointing [s]
+    num = (lam**2 * Tsys)**2 #[m2 mK]
+    denom = Ae**2 * 2 * dnu*1e6 * n_baseline(u, nu, exp_dict) * tp  #[m2]
+    return num/denom #[mK]
+
+# def sigmaT_uv(u, nu, dnu, exp_dict):
+#     lam = c / 1e6 / nu #[m]
+#     Tsys = exp_dict["Tsys"] #[mK]
+#     Ae = (exp_dict["Ddish"]/2)**2 * np.pi #[m2]
+#     Sarea = exp_dict["S_area"] #[sterrad]
+#     ttot = exp_dict["t_int"] * 60**2 #[s]
+#     beam = beam_FWHM(exp_dict, nu) #[rad]
+#
+#     Np = Sarea / beam**2
+#     tp = ttot / Np#time per pointing [s]
+#     num = lam**4 * Tsys**2 #[(m2 mK)2]
+#     # du = np.sqrt(Ae / lam**2) #page 30 in late-time cosmology (appendix)
+#     denom = nu21emit * 1e6 *Ae**2 * n_baseline(u, nu, exp_dict) * tp  #[m4]
+#     return num/denom #[mK]
+
+
+# def Cl_interferom_noise(ltable, zmin, zmax, exp_dict):
+#     zmean = (zmin+zmax)/2
+#     nu = ztonu21(zmean)
+#     dnu = ztonu21(zmin) - ztonu21(zmax)
+#     # utable = ltable / 2 / np.pi
+#     utable = ltable / 2 / np.pi
+#     return sigmaT_uv(utable, nu, dnu, exp_dict)
+
+
+def Cl_interferom_noise_slow(ltable,zmin,zmax, exp_dict, Nint = 500):
     """arguments: ell array, zmin, zmax
     returns: Cl as array"""
     ztable = np.linspace(zmin, zmax, Nint)

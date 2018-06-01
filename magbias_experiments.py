@@ -61,6 +61,13 @@ hirax = {
 cb_hirax=dict(hirax) #same but with actual baseline file.
 cb_hirax.update({'n(x)':             "/Users/amadeus/Documents/PhD/work/bao21cm/hirax/hirax_Ndish1024_baseline1.dat"})
 
+
+hirax512 = dict(hirax)
+hirax512.update({ "n(x)": "/Users/amadeus/Documents/PhD/work/bao21cm/hirax/HIRAX_Ndish529_Ndish529_baseline1.dat",
+                    "Ndish": 529,
+                    } )
+
+
 LSST = {
     "dNdz":         "/Users/amadeus/Documents/PhD/work/multitracer/LSST/nz_LSST_gold_sqdeg.dat",
     }
