@@ -257,7 +257,7 @@ def DELTA_Cl_HIxmag(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = "CV",
     else:
         if type(SURVEY) == list:
             hisurv = SURVEY[0]
-            Cshot = shotnoise(zb, dzb, SURVEY[1]);#Cshot needs the list of surveys
+            Cshot = shotnoise(zb, dzb, SURVEY[1]);
         elif type(SURVEY)==dict:
             hisurv = SURVEY
             print "We assume a perfect galaxy survey!"
@@ -681,4 +681,4 @@ def shotnoise(z, dz, galsurv, NINT = 200):
     z_integrate = np.linspace(zmin,zmax, NINT)
     dNzdOm = np.trapz(dNdzinterp(z_integrate), z_integrate)
     Nz = dNzdOm / (np.pi/180)**2 * 4 * np.pi #changing degrees to rad, and multiplying with survey area
-    return 4*pi/Nz #shot noise!
+    return 4*pi/Nz #shot noise! The 4 pi could be cancelled but this way I can check more easily that it's correct...
