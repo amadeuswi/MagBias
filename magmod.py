@@ -8,10 +8,11 @@ from scipy import integrate
 import scipy.special as sp
 from scipy.interpolate import interp2d, interp1d
 from time import clock #timing
+from lf_photometric import s_magbias, bias as galaxy_bias
 
 
 from homogen import hom, cosmo as cosmologies
-from magbias_experiments import SKA_zhangpen, CLAR_zhangpen, SKA, hirax, n
+from magbias_experiments import SKA_zhangpen, CLAR_zhangpen, SKA, hirax, LSST, n
 cosmo = cosmologies.std
 c=hom.c
 
@@ -123,8 +124,8 @@ def rCom(z):
 
 
 #preliminary, to be changed!!
-bHI = 1
-bgal = 1
+# bHI = 1
+# bgal = 1
 
 #camb power spectrum:
 if os.path.exists('/mnt/lustre/users/awitzemann/'): #this means we are chpc
@@ -153,9 +154,12 @@ def pknl(kk, zz):
 
 # difficult to do quick integration because integration limit appears inside the integral. Therefore we split it up!
 #lensing kernel from Alkistis' notes:
-def g(z, zb, dzb, NINT = 10000): #new standard to use cumtrapz
+def g_old(z, zb, dzb, NINT = 10000, S_G = "old fit"): #does not include sg inside the integral
     """compare to my (handwritten) notebook 2 entry for 9/3/17
     zb is background redshift"""
+    if S_G != "old fit":
+        raise ValueError
+    print "using old lensing kernel"
     zmin = zb - dzb
     zmax = zb + dzb
     z = np.atleast_1d(z)
@@ -182,13 +186,83 @@ def g(z, zb, dzb, NINT = 10000): #new standard to use cumtrapz
     return result
 
 
-def Cl_HIxmag_CAMB(ltable, zf, delta_zf, zb, delta_zb, Nint = 500):
+def g(z, zb, dzb, NINT = 10000, S_G = "LSST"): #new standard to use cumtrapz, also with sg inside the integration
+# def g(z, zb, dzb, NINT = 500, S_G = "LSST"): ############TEST:QUICKER INTEGRATION#############new standard to use cumtrapz, also with sg inside the integration
+    """compare to my (handwritten) notebook 2 entry for 9/3/18
+    zb is background redshift"""
+
+    if S_G == "LSST":
+        sgfunc = sg
+    elif S_G == "old fit":
+        sgfunc = sg_old
+    else: raise ValueError
+
+    zmin = zb - dzb
+    zmax = zb + dzb
+    z = np.atleast_1d(z)
+    zintmin = 1e-3 #lower integration limit, z must not be smaller than this
+    if (z>zmax).any() or (z<zintmin).any():
+        raise ValueError("z either lies behind the background or is too small! z = {} to {}".format(np.amin(z), np.amax(z)))
+
+    zint = np.linspace(zmax, zintmin, NINT) #going reverse, multiply integral with -1
+    # Warray = W_tophat(zint, zmin, zmax)
+    Warray = W_tophat(zint, zmin, zmax) * (5 * sgfunc(zint) -2 )
+    # Warray = W_tophat(zint, zmin, zmax) * (5 * sgfunc(zb) -2 ) #assuming that sgfunc is constant with redshift. THIS IS A TEST
+    rarray = rCom(zint)
+    Wbyrarray = Warray/rarray
+
+    integrand1 = Warray
+    integrand2 = Wbyrarray
+
+    integral1 = -integrate.cumtrapz( integrand1, zint, initial = 0)
+    integral2 = -integrate.cumtrapz( integrand2, zint, initial = 0)
+
+    val1 = interp1d(zint[::-1], integral1[::-1], kind='linear', bounds_error=False)
+    val2 = interp1d(zint[::-1], integral2[::-1], kind='linear', bounds_error=False)
+
+    rComtab = rCom(z)
+    result = rComtab*(val1(z) - rComtab*val2(z))
+    return result
+
+def g_original(z, zb, dzb, NINT = 10000): #new standard to use cumtrapz, also with sg inside the integration
+# def g(z, zb, dzb, NINT = 500, S_G = "LSST"): ############TEST:QUICKER INTEGRATION#############new standard to use cumtrapz, also with sg inside the integration
+    """compare to my (handwritten) notebook 2 entry for 9/3/18
+    zb is background redshift"""
+
+    zmin = zb - dzb
+    zmax = zb + dzb
+    z = np.atleast_1d(z)
+    zintmin = 1e-3 #lower integration limit, z must not be smaller than this
+    if (z>zmax).any() or (z<zintmin).any():
+        raise ValueError("z either lies behind the background or is too small! z = {} to {}".format(np.amin(z), np.amax(z)))
+
+    zint = np.linspace(zmax, zintmin, NINT) #going reverse, multiply integral with -1
+    # Warray = W_tophat(zint, zmin, zmax)
+    Warray = W_tophat(zint, zmin, zmax)
+    rarray = rCom(zint)
+    Wbyrarray = Warray/rarray
+
+    integrand1 = Warray
+    integrand2 = Wbyrarray
+
+    integral1 = -integrate.cumtrapz( integrand1, zint, initial = 0)
+    integral2 = -integrate.cumtrapz( integrand2, zint, initial = 0)
+
+    val1 = interp1d(zint[::-1], integral1[::-1], kind='linear', bounds_error=False)
+    val2 = interp1d(zint[::-1], integral2[::-1], kind='linear', bounds_error=False)
+
+    rComtab = rCom(z)
+    result = rComtab*(val1(z) - rComtab*val2(z))
+    return result
+
+
+def Cl_HIxmag_CAMB(ltable, zf, delta_zf, zb, delta_zb, Nint = 500, S_G = "LSST"):
     """ltable, zf foreground redshift, zb background redshift,
     delta_zf foreground redshift widht, Nint integration steps"""
 
+
     #note there is no T_obs factor because we want to compare with galaxy case
-    fac1 = 3/2 * bHI*(H_0/c)**2 * Omega_m #no square on (H_0/c) because it cancels out
-    fac2 = bHI * (5*sg(zb) - 2)
+    fac = 3/2 *(H_0/c)**2 * Omega_m #no square on (H_0/c) because it cancels out
     zmin = zf - delta_zf
     zmax = zf + delta_zf
     ztab = np.linspace(zmin, zmax, Nint) #do checks on this! should be 0 to inf
@@ -197,13 +271,37 @@ def Cl_HIxmag_CAMB(ltable, zf, delta_zf, zb, delta_zb, Nint = 500):
     for il in range(len(ltable)):
         ell = ltable[il]
         pknltab = np.array([pknl(( ell)/rCom(zzz), zzz) for zzz in ztab])
-        integrand[:,il] = (1+ztab) * W_tophat(ztab, zmin, zmax) * g(ztab, zb, delta_zb) \
+        integrand[:,il] = (1+ztab) * bHI(ztab) * W_tophat(ztab, zmin, zmax) * g(ztab, zb, delta_zb, S_G = S_G) \
         / rCom(ztab)**2 * pknltab
 
         #old and slow ways to calculate the same thing:
 #             integrand[:,il]= np.array([(1+zzz) * W_tophat(zzz, zfmin, zfmax) * g(zzz, zb, dzb) \
 #                                        / rCom(zzz)**2 * pknl(( ell)/rCom(zzz), zzz) for zzz in ztab])
 #         integrand[:,il]= np.array([(1+zzz) * W_tophat(zzz, zfmin, zfmax) * g(zzz, zb, dzb) * rCom(zzz) * pknl(( ell)/rCom(zzz), zzz) for zzz in ztab]) #different factor of chi than in alkistis' notes (units are wrong there)
+    result= fac * np.trapz(integrand,ztab,axis=0)
+    return result
+
+def Cl_HIxmag_CAMB_old(ltable, zf, delta_zf, zb, delta_zb, Nint = 500):
+    """ltable, zf foreground redshift, zb background redshift,
+    delta_zf foreground redshift widht, Nint integration steps"""
+
+
+    #note there is no T_obs factor because we want to compare with galaxy case
+    fac1 = 3/2 *(H_0/c)**2 * Omega_m #no square on (H_0/c) because it cancels out
+    fac2 = 1 * (5*sg_old(zb) - 2) #we take sg out of the integral
+
+    zmin = zf - delta_zf
+    zmax = zf + delta_zf
+    ztab = np.linspace(zmin, zmax, Nint) #do checks on this! should be 0 to inf
+
+    integrand=np.zeros([len(ztab),len(ltable)])
+    for il in range(len(ltable)):
+        ell = ltable[il]
+        pknltab = np.array([pknl(( ell)/rCom(zzz), zzz) for zzz in ztab])
+        integrand[:,il] = (1+ztab) * W_tophat(ztab, zmin, zmax) * g_original(ztab, zb, delta_zb) \
+        / rCom(ztab)**2 * pknltab
+
+
     result= fac1 * fac2 * np.trapz(integrand,ztab,axis=0)
     return result
 
@@ -217,18 +315,19 @@ def C_l_HIHI_CAMB(ltable,zmin,zmax, Nint = 500):
     for l in range(len(ltable)):
         #for the moment we divide out T_obs to compare with the galaxy results
 #         integrand[:,l]=E_z(ztable)*(W_tophat(ztable,zmin,zmax)/rCom(ztable))**2*pknl((ltable[l])/rCom(ztable), ztable)
-        integrand[:,l]= np.array([E_z(zzz)*(W_tophat(zzz,zmin,zmax)/rCom(zzz))**2*pknl((ltable[l])/rCom(zzz), zzz) for zzz in ztable])
-    result=bHI**2 * H_0/c*np.trapz(integrand,ztable,axis=0)
+        integrand[:,l]= np.array([E_z(zzz)*(bHI(zzz) * W_tophat(zzz,zmin,zmax)/rCom(zzz))**2*pknl((ltable[l])/rCom(zzz), zzz) for zzz in ztable])
+    result=H_0/c*np.trapz(integrand,ztable,axis=0)
     return result
 
+# def C_l_gg_CAMB(ltable,zmin,zmax, experiment = LSST, Nint = 500):
 def C_l_gg_CAMB(ltable,zmin,zmax, Nint = 500):
     """arguments: ell array, zmin, zmax
     returns: Cl as array"""
     ztable = np.linspace(zmin, zmax, Nint)
     integrand=np.zeros([len(ztable),len(ltable)])
     for l in range(len(ltable)):
-        integrand[:,l]=np.array([E_z(zzz)*(W_tophat(zzz,zmin,zmax)/rCom(zzz))**2*pknl((ltable[l])/rCom(zzz), zzz) for zzz in ztable])
-    result=bgal**2 * H_0/c*np.trapz(integrand,ztable,axis=0)
+        integrand[:,l]=np.array([E_z(zzz)*(bgal(zzz) * W_tophat(zzz,zmin,zmax)/rCom(zzz))**2*pknl((ltable[l])/rCom(zzz), zzz) for zzz in ztable])
+    result=H_0/c*np.trapz(integrand,ztable,axis=0)
     return result
 
 
@@ -279,7 +378,8 @@ def DELTA_Cl_HIxmag(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = "CV",
     # HIHI = ClHIHIfunc(ltable, zfmin, zfmax)
     # gg = Clggfunc(ltable, zbmin, zbmax)
     # print "it took {} seconds to compute all signals".format(clock() - start)
-    num = X2 + (HIHI + N_ell) * (gg + Cshot)
+    num = 2 * (X2 + (HIHI + N_ell) * (gg + Cshot))
+    # num = (X2 + (HIHI + N_ell) * (gg + Cshot)) #this is wrong
     denom = (2*ltable+1) * d_ell * fsky
     result = np.sqrt(num/denom)
     return result
@@ -324,7 +424,46 @@ def alpha(z, experiment):
     alpha_interp = interp1d(z_alpha_table, alphatable, kind = "cubic", bounds_error=None, fill_value=0)
     return alpha_interp(z)
 
-def sg(z, experiment = CLAR_zhangpen, USE_ALPHA = False): #number count slope. Fit taken from eq 23 in 1611.01322v2
+def bgal(z, experiment = LSST):
+    return galaxy_bias(z, experiment["rmax"], "all")
+    # return 1
+def bHI(z): #fit from Alkistis, apparently from the 'red book', but I have not checked yet
+    return  0.67 + 0.18*z + 0.05*z**2
+    # return  1
+
+
+# def alpha(z, experiment = LSST, S_G = "LSST"):
+#     if S_G == "old fit":
+#         sgfunc = sg_old
+#     elif S_G =="LSST":
+#         sgfunc = sg
+#     else: raise ValueError
+#     return 5/2 * sgfunc(z, experiment)
+
+ztab_LSST, sgtab_LSST = np.loadtxt(LSST["sg_file"], unpack = True)
+sginterp_LSST = interp1d(ztab_LSST, sgtab_LSST, kind='cubic', bounds_error=False)
+def sg_fit(z, experiment):
+    if experiment == LSST:
+        # print "quick!"
+        return sginterp_LSST(z) #this is quicker!
+    ztab, sgtab = np.loadtxt(experiment["sg_file"], unpack = True)
+    sginterp = interp1d(ztab, sgtab, kind='cubic', bounds_error=False)
+    return sginterp(z)
+
+
+def sg(z, experiment = LSST):
+    """uses the function from David Alonso. 'all' means all galaxy colors, rmax is the magnitude limit of the experiment which needs to be given"""
+    if "sg_file" in experiment.keys() and os.path.exists(experiment["sg_file"]):
+        return sg_fit(z, experiment) #quicker!
+    if type(z) == float:
+        return s_magbias(z, experiment["rmax"], "all")
+    z = np.atleast_1d(z)
+    # res = [s_magbias(zzz, experiment["rmax"], "all") for zzz in z]
+    res = s_magbias(z, experiment["rmax"], "all")
+    return np.array(res)
+
+
+def sg_old(z, experiment = CLAR_zhangpen, USE_ALPHA = False): #number count slope. Fit taken from eq 23 in 1611.01322v2
     """if USE_ALPHA, then sg is just caluclated from alpha"""
     if USE_ALPHA:
         return 2/5*alpha(z, experiment)
@@ -337,7 +476,8 @@ def sg(z, experiment = CLAR_zhangpen, USE_ALPHA = False): #number count slope. F
         n4 = -0.409
         n5 = 0.152
 
-        return n0 + n1*z + n2*z**2 + n3*z**3 + n4*z**4 + n5*z**5
+        res = n0 + n1*z + n2*z**2 + n3*z**3 + n4*z**4 + n5*z**5
+        return res
 
 
 
@@ -490,42 +630,42 @@ def N_HI(z, n, experiment, NINT = 2000, Nderiv = 1000):
 
 
 
-def G(z, zmin, zmax, nsig, experiment, NINT = 1000): #kernel of the bg magnification
-    """zmin and zmax are edges of galaxy distribution we're looking at
-    experiment needs to be SKA etc because of alpha"""
-    z = np.atleast_1d(z)
-    zdist = np.linspace(zmin, zmax, NINT)
-    chi = rCom( z )
-    chidist = rCom(zdist) #of galaxy distribution, etiher bg or fg
-#     wmatrix = w_geometry(chi, chidist)
-    ntab = dNdz(zdist, nsig, experiment)
-    Ngal = np.trapz(ntab, zdist)
-    alphatab = alpha(zdist, experiment)
-#     alphatab = 5/2*sg(zdist) #same thing
-    integrand1 = ntab * 2 * (alphatab -1 )
-    integrand2 = ntab * 2 * (alphatab -1 ) / chidist
-    integral1 = np.trapz( integrand1, zdist)
-    integral2 = np.trapz( integrand2, zdist)
-    return ((1+z)/Ngal) * (chi * integral1 - chi**2 * integral2)
+# def G(z, zmin, zmax, nsig, experiment, NINT = 1000, S_G = "LSST"): #kernel of the bg magnification
+#     """zmin and zmax are edges of galaxy distribution we're looking at
+#     experiment needs to be SKA etc because of alpha"""
+#     z = np.atleast_1d(z)
+#     zdist = np.linspace(zmin, zmax, NINT)
+#     chi = rCom( z )
+#     chidist = rCom(zdist) #of galaxy distribution, etiher bg or fg
+# #     wmatrix = w_geometry(chi, chidist)
+#     ntab = dNdz(zdist, nsig, experiment)
+#     Ngal = np.trapz(ntab, zdist)
+#     alphatab = alpha(zdist, experiment, S_G)
+# #     alphatab = 5/2*sg(zdist) #same thing
+#     integrand1 = ntab * 2 * (alphatab -1 )
+#     integrand2 = ntab * 2 * (alphatab -1 ) / chidist
+#     integral1 = np.trapz( integrand1, zdist)
+#     integral2 = np.trapz( integrand2, zdist)
+#     return ((1+z)/Ngal) * (chi * integral1 - chi**2 * integral2)
 
-def Cl_gxmag_CAMB(ltable, zf, delta_zf, zb, delta_zb, nsig, experiment, Nint = 500):
-    zftab = np.linspace(zf-delta_zf, zf+delta_zf, Nint)
-    zbmin = zb - delta_zb
-    zbmax = zb + delta_zb
-    rtab = rCom(zftab)
-    ntab = dNdz(zftab, nsig, experiment)
-    Ngal = np.trapz(ntab, zftab)
-    integrand=np.zeros((len(zftab),len(ltable)))
-    for il in range(len(ltable)):
-        ell = ltable[il]
-        pknltab = np.array([pknl(( ell)/rCom(zzz), zzz) for zzz in zftab])
-        #we divide by r**3 because we go from Delta_m to P_m
-        integrand[:,il]= 1/rtab**3 * pknltab * G(zftab, zbmin, zbmax, nsig, experiment) * dNdz(zftab, nsig, experiment) * rtab
-    fac1 = 3 * Omega_m * H_0**2  / c**2
-    fac2 = np.pi**2#/ ltable**3 #we use k^3 Delta_m = l^3/r^3 Delta_m = P_m
-    fac3 = 1 / Ngal
-    result= fac1 * fac2 * fac3 * np.trapz(integrand,zftab,axis=0)
-    return result * h**6
+# def Cl_gxmag_CAMB(ltable, zf, delta_zf, zb, delta_zb, nsig, experiment, Nint = 500, S_G = "LSST"):
+#     zftab = np.linspace(zf-delta_zf, zf+delta_zf, Nint)
+#     zbmin = zb - delta_zb
+#     zbmax = zb + delta_zb
+#     rtab = rCom(zftab)
+#     ntab = dNdz(zftab, nsig, experiment)
+#     Ngal = np.trapz(ntab, zftab)
+#     integrand=np.zeros((len(zftab),len(ltable)))
+#     for il in range(len(ltable)):
+#         ell = ltable[il]
+#         pknltab = np.array([pknl(( ell)/rCom(zzz), zzz) for zzz in zftab])
+#         #we divide by r**3 because we go from Delta_m to P_m
+#         integrand[:,il]= 1/rtab**3 * pknltab * G(zftab, zbmin, zbmax, nsig, experiment, S_G = S_G) * dNdz(zftab, nsig, experiment) * rtab
+#     fac1 = 3 * Omega_m * H_0**2  / c**2
+#     fac2 = np.pi**2#/ ltable**3 #we use k^3 Delta_m = l^3/r^3 Delta_m = P_m
+#     fac3 = 1 / Ngal
+#     result= fac1 * fac2 * fac3 * np.trapz(integrand,zftab,axis=0)
+#     return result * h**6
 
 
 

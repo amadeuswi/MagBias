@@ -70,4 +70,8 @@ hirax512.update({ "n(x)": "/Users/amadeus/Documents/PhD/work/bao21cm/hirax/HIRAX
 
 LSST = {
     "dNdz":         "/Users/amadeus/Documents/PhD/work/multitracer/LSST/nz_LSST_gold_sqdeg.dat",
+    "rmax":27, #see bottom of page 71 in the LSST science book 0912.0201
+    'sg_file': '/Users/amadeus/Documents/PhD/work/MagBias/sg_data/sg_LSST.txt',
     }
+LSST_nosgfit = dict(LSST)# the same but without the sg_file
+del LSST_nosgfit["sg_file"]
