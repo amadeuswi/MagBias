@@ -58,7 +58,7 @@ def D_z(z):
 	return D_z1(z)/D_z1(0.)
 
 def T_obs(z):
-	return 44*(Omega_HI*h/(2.45*10**-4))*(1+z)**2/E_z(z) #myK
+	return 1e-3*44*(Omega_HI*h/(2.45*10**-4))*(1+z)**2/E_z(z) #mK
 
 def W_tophat(z,zmin,zmax):
     """arguments: z, zmin, zmax
