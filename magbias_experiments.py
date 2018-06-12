@@ -17,7 +17,7 @@ ttot = 5 * 365 * 24 #[hours], 5 years
 
 
 SKA_zhangpen = { "Aeff" : 6e5, #[m2]
-      "Tsys" : 30, #[K]
+      "Tsys" : 30*1e3, #[mK]
       "t_int" : ttot * FOV_SKA / A_SKA,
        "S_area": A_SKA,
        "Name" : "SKA_zhangpen"
@@ -25,7 +25,7 @@ SKA_zhangpen = { "Aeff" : 6e5, #[m2]
 
 CLAR_zhangpen = {
     "Aeff" : 5e4, #[m2]
-    "Tsys" : 30, #[K]
+    "Tsys" : 30*1e3, #[mK]
     "t_int": ttot * FOV_CLAR / A_CLAR,
     "S_area": A_CLAR,
     "Name" : "CLAR_zhangpen"

@@ -261,7 +261,7 @@ def Cl_HIxmag_CAMB(ltable, zf, delta_zf, zb, delta_zb, Nint = 500, S_G = "LSST")
     delta_zf foreground redshift widht, Nint integration steps"""
 
 
-    #note there is no T_obs factor because we want to compare with galaxy case
+    #   NOW NEW: INCLUDING T_OBS AS WE SHOULD
     fac = 3/2 *(H_0/c)**2 * Omega_m #no square on (H_0/c) because it cancels out
     zmin = zf - delta_zf
     zmax = zf + delta_zf
@@ -271,7 +271,7 @@ def Cl_HIxmag_CAMB(ltable, zf, delta_zf, zb, delta_zb, Nint = 500, S_G = "LSST")
     for il in range(len(ltable)):
         ell = ltable[il]
         pknltab = np.array([pknl(( ell)/rCom(zzz), zzz) for zzz in ztab])
-        integrand[:,il] = (1+ztab) * bHI(ztab) * W_tophat(ztab, zmin, zmax) * g(ztab, zb, delta_zb, S_G = S_G) \
+        integrand[:,il] = (1+ztab) * bHI(ztab) * T_obs(ztab) * W_tophat(ztab, zmin, zmax) * g(ztab, zb, delta_zb, S_G = S_G) \
         / rCom(ztab)**2 * pknltab
 
         #old and slow ways to calculate the same thing:
@@ -313,9 +313,8 @@ def C_l_HIHI_CAMB(ltable,zmin,zmax, Nint = 500):
     ztable = np.linspace(zmin, zmax, Nint)
     integrand=np.zeros([len(ztable),len(ltable)])
     for l in range(len(ltable)):
-        #for the moment we divide out T_obs to compare with the galaxy results
-#         integrand[:,l]=E_z(ztable)*(W_tophat(ztable,zmin,zmax)/rCom(ztable))**2*pknl((ltable[l])/rCom(ztable), ztable)
-        integrand[:,l]= np.array([E_z(zzz)*(bHI(zzz) * W_tophat(zzz,zmin,zmax)/rCom(zzz))**2*pknl((ltable[l])/rCom(zzz), zzz) for zzz in ztable])
+        #   NOW NEW: INCLUDING T_OBS AS WE SHOULD
+        integrand[:,l]= np.array([E_z(zzz)*(bHI(zzz) * T_obs(zzz) * W_tophat(zzz,zmin,zmax)/rCom(zzz))**2*pknl((ltable[l])/rCom(zzz), zzz) for zzz in ztable])
     result=H_0/c*np.trapz(integrand,ztable,axis=0)
     return result
 
