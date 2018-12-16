@@ -71,7 +71,12 @@ hirax512.update({ "n(x)": "/Users/amadeus/Documents/PhD/work/bao21cm/hirax/HIRAX
 LSST = {
     "dNdz":         "/Users/amadeus/Documents/PhD/work/multitracer/LSST/nz_LSST_gold_sqdeg.dat",
     "rmax":27, #see bottom of page 71 in the LSST science book 0912.0201
+    'sg_file_z': '/Users/amadeus/Documents/PhD/work/MagBias/sg_data/sg_LSST_z.txt',
+    'sg_file_magmax': '/Users/amadeus/Documents/PhD/work/MagBias/sg_data/sg_LSST_mag.txt',
     'sg_file': '/Users/amadeus/Documents/PhD/work/MagBias/sg_data/sg_LSST.txt',
+    'logsg_file': '/Users/amadeus/Documents/PhD/work/MagBias/sg_data/logsg_LSST.txt', #logarithm is easier to interpolate
     }
 LSST_nosgfit = dict(LSST)# the same but without the sg_file
 del LSST_nosgfit["sg_file"]
+del LSST_nosgfit["sg_file_z"]
+del LSST_nosgfit["sg_file_magmax"]

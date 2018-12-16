@@ -1,3 +1,6 @@
+#comes from http://intensitymapping.physics.ox.ac.uk
+
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -11,6 +14,10 @@ from homogen import hom
 ###########################
 # Cosmological parameters #
 ###########################
+
+
+
+
 hhub=0.7
 h = hhub
 omm=0.3

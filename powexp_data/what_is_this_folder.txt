@@ -1,0 +1,1 @@
+this folder contains the parameters for the powexp fit function in magmod to fit the dndz function form David Alonso in lf_photometric (for speed!).
