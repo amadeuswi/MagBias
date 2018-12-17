@@ -927,8 +927,35 @@ def Cl_interferom_noise_slow(ltable,zmin,zmax, exp_dict, Nint = 500):
     result=H_0/c*np.trapz(integrand,ztable,axis=0)
     return result
 
-def shotnoise(z, dz, galsurv, MAXMAG = False, NINT = 200):
-    print "We use all sky for calculating N(z)"
+rescale = 1 #rescaling factor of nofz
+def nofz(zz, mstar): #returns  the rescaled nz_distribtion function from lf_photometric in order to match the nz_gold.txt galaxy number
+    zz = np.atleast_1d(zz)
+    ntab = np.array([nz_distribution(zzz, mstar, "all")[0] for zzz in zz])
+    return rescale * ntab
+
+####################################################################################
+# NOW: DETERMINE THE VALUE FOR rescale:
+dNfile = "LSST/nz_gold.txt" #per arcmin!!
+ztab_file, dNdztab_file = np.loadtxt(dNfile, unpack = True)
+dNdzinterp = interp1d(ztab_file, dNdztab_file, kind='linear', bounds_error=False)
+zint = np.linspace(0.001, 3.9, 1000)
+
+nztab_func = nofz(zint, 27) # max lum cut
+nztab_file = dNdzinterp(zint)
+
+#go to all sky
+nztab_func *= 4*np.pi #in sterrad
+nztab_file *= 60**2 * 41200 #in arcmin
+
+#integrate to get total number of galaxies:
+Nz_func = np.trapz(nztab_func, zint)
+Nz_file = np.trapz(nztab_file, zint)
+rescale = Nz_file/Nz_func
+print "\n", "#$"*30, "\n", "Rescaling the galaxy number density by a factor of {} to match the gold sample".format(rescale), "\n", "#$"*30, "\n"
+
+
+
+def shotnoise(z, dz, galsurv, MAXMAG = False, NINT = 2000):
     # zmin = z - dz/2
     # zmax = z + dz/2
 
@@ -940,11 +967,15 @@ def shotnoise(z, dz, galsurv, MAXMAG = False, NINT = 200):
         ztab, dNdztab = np.loadtxt(galsurv["dNdz"], unpack = True)
         dNdzinterp = interp1d(ztab, dNdztab, kind='linear', bounds_error=False)
         dNzdOm = np.trapz(dNdzinterp(z_integrate), z_integrate)
+        Nz = dNzdOm / (np.pi/180)**2 * 4 * np.pi #changing degrees to rad, and multiplying with all sky
+
     else: #we use the function for n(z) from lf_photometric from david's paper
         print "shot noise for LSST!"
-        dNdztabnew = np.array([nz_distribution(zzz, MAXMAG, "all")[0] for zzz in z_integrate])
+        # dNdztabnew = np.array([nz_distribution(zzz, MAXMAG, "all")[0] for zzz in z_integrate])
+        # dNdztabnew = dndz_fit(z_integrate, MAXMAG) #use the fitting function in the future!
+        dNdztabnew = nofz(z_integrate, MAXMAG)
         dNzdOm = np.trapz(dNdztabnew, z_integrate)
-    Nz = dNzdOm / (np.pi/180)**2 * 4 * np.pi #changing degrees to rad, and multiplying with survey area
+        Nz = dNzdOm * 4 * np.pi #already in rad!!!! and multiplying with all sky
     return 4*pi/Nz #shot noise! The 4 pi could be cancelled but this way I can check more easily that it's correct...
 
 
@@ -991,8 +1022,21 @@ def W_dndz(z, zmin, zmax, mstar):
 
 #two functions to get redshift bins (just to clean up the code:
 
-def get_bg_bin_for_fgzmax(fzmax, bzmax = 3.9, bufferz = 0.1):
-    bzmin = fzmax + bufferz
+def get_bg_bin_for_fgzmax(fzmax, mstar, bufferz = 0.1, OPTIMIZE_ZMIN = False):
+    bzmax = zmax_of_MAXMAG(mstar)
+    bzmin1 = fzmax + bufferz #minimum possible minimum redshift
+
+    #now look for the place where the sign of 5sg-2 flips:
+    zztab = np.linspace(bzmin1, bzmax, 1000)
+    sg5m2 = sg5minus2(zztab, mstar)
+    if OPTIMIZE_ZMIN and (sg5m2<0).any():
+        flipi = np.where(sg5m2<0)[0][-1]+1 #+1 because we want first index after sign flip
+        bzmin2 = zztab[np.int(flipi)]
+        bzmin = np.amax([bzmin1, bzmin2])
+    else:
+        bzmin = bzmin1 #ignore 5sg-2!
+
+
     zb = (bzmin +bzmax)/2
     dzb = (bzmax-bzmin)/2
     return bzmin, bzmax, zb, dzb
@@ -1012,11 +1056,12 @@ def get_fg_bin_for_frequency_range(nutot, numax):
 #number of galaxies behind redshift:
 def ngal_behind(MAXMAG, NNUM = 100):
     ztab = np.linspace(1.5,4.,NNUM)
-    nztab = [nz_distribution(zz, MAXMAG, "all")[0] for zz in ztab]
+    # nztab = [nz_distribution(zz, MAXMAG, "all")[0] for zz in ztab]
+    nztab = nofz(ztab, MAXMAG)
     ngal_before =integrate.cumtrapz( nztab, ztab, initial = 0  ) #all galaxies before z
     allgal = ngal_before[-1] #all galaxies
     ng_behind = allgal - ngal_before #all galaxies behind
-    ng_behind /= 4 * np.pi # full sky
+    ng_behind *= 4 * np.pi # full sky
     return ng_behind, ztab
 
 #towards finding a function zmax(m*), which is z until the last galaxy...:
@@ -1025,7 +1070,7 @@ def zmax_of_MAXMAG(MAXMAG, NNUM = 100):
     #I defined it to be the redshift where there is less than 1e-3 galaxies behind it on the full sky
     #NNUM = 1000 is tested to be accurate, but NNUM = 100 is probably enough as this is only a rough cutoff
     ng_behind,ztab = ngal_behind(MAXMAG, NNUM = NNUM)
-    i_end = np.where(ng_behind < 1e-5)[0][0]
+    i_end = np.where(ng_behind < 1e-1)[0][0]
     return ztab[i_end]
 #     return 2
 
@@ -1033,10 +1078,10 @@ def zmax_of_MAXMAG(MAXMAG, NNUM = 100):
 #to calculate the S2N more easily, using mstar and fg redshift range.
 def S2N_of_mstar_and_zf(mmag, ltabbb, zfmin, zfmax, bufferz = 0.1, SURVEY = [SKA, LSST],
                         P_FUNC_LIST = [C_l_HIHI_CAMB, C_l_gg_CAMB, Cl_HIxmag_CAMB]):
-    bzzmax = zmax_of_MAXMAG(mmag)
+    # bzzmax = zmax_of_MAXMAG(mmag)
     zzf = (zfmin+zfmax)/2
     dzzf = (zfmax-zfmin)/2
-    bzzmin, bzzmax, bzz, bdzz = get_bg_bin_for_fgzmax(zfmax, bzmax = bzzmax, bufferz = bufferz)
+    bzzmin, bzzmax, bzz, bdzz = get_bg_bin_for_fgzmax(zfmax, mmag, bufferz = bufferz)
     powspeclisttt = [P_FUNC_LIST[0](ltabbb, zfmin, zfmax),
                             P_FUNC_LIST[1](ltabbb, bzzmin, bzzmax, mmag),
                             P_FUNC_LIST[2](ltabbb, zzf, dzzf, bzz, bdzz, MAXMAG = mmag)]

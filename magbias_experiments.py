@@ -48,13 +48,13 @@ hirax = {
     'Ndish':            1024,                 # No. of dishes
     'Nbeam':            1,                # No. of beams (for multi-pixel detectors)
     'Ddish':            6.,               # Single dish diameter [m]
-    "t_int":            8760,               #1 year in [h]
+    "t_int":            17520,               #4 years at 50% obs fraction in [h]
     'Tsys':            50.*(1e3),         # System temp. [mK]
     #'nu_crit':          1000.,            #critical frequency, UNCLEAR
     'survey_dnutot':    400.,              # Total bandwidth of *entire* survey [MHz]
     'survey_numax':     800.,             # Max. freq. of survey
     'dnu':              0.4,               # Bandwidth of single channel [MHz]
-    'S_area':            np.pi,          # fsky = 1/4 Total survey area [radians^2]
+    'S_area':            1.45*np.pi,          # fsky = 15.000 sq. deg. * (pi/180)**2 Total survey area [radians^2]
     'Dmax':             307.,               # Max. interferom. baseline [m]
     'Dmin':             7.,                 # Min. interferom. baseline [m]
 }
@@ -74,7 +74,7 @@ LSST = {
     'sg_file_z': '/Users/amadeus/Documents/PhD/work/MagBias/sg_data/sg_LSST_z.txt',
     'sg_file_magmax': '/Users/amadeus/Documents/PhD/work/MagBias/sg_data/sg_LSST_mag.txt',
     'sg_file': '/Users/amadeus/Documents/PhD/work/MagBias/sg_data/sg_LSST.txt',
-    'logsg_file': '/Users/amadeus/Documents/PhD/work/MagBias/sg_data/logsg_LSST.txt', #logarithm is easier to interpolate
+    # 'logsg_file': '/Users/amadeus/Documents/PhD/work/MagBias/sg_data/logsg_LSST.txt', #logarithm is easier to interpolate
     }
 LSST_nosgfit = dict(LSST)# the same but without the sg_file
 del LSST_nosgfit["sg_file"]
