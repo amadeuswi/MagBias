@@ -194,7 +194,7 @@ def g_old(z, zb, dzb, NINT = 10000, S_G = "old fit", MAXMAG = False): #does not 
     return result
 
 
-def g_tophat(z, zb, dzb, NINT = 10000, S_G = "LSST_INTERPOL", MAXMAG = False): #new standard to use cumtrapz, also with sg inside the integration
+def g_tophat(z, zb, dzb, NINT = 10000, S_G = "LSST", MAXMAG = False): #new standard to use cumtrapz, also with sg inside the integration
 # def g(z, zb, dzb, NINT = 500, S_G = "LSST"): ############TEST:QUICKER INTEGRATION#############new standard to use cumtrapz, also with sg inside the integration
     """compare to my (handwritten) notebook 2 entry for 9/3/18
     zb is background redshift"""
@@ -203,8 +203,7 @@ def g_tophat(z, zb, dzb, NINT = 10000, S_G = "LSST_INTERPOL", MAXMAG = False): #
     if type(MAXMAG) == bool and MAXMAG == False:
         raise ValueError("please give a value to MAXMAG!")
 
-    if S_G == "LSST_INTERPOL":
-        sgfunc = sg_interp
+
     elif S_G == "LSST":
         sgfunc = sg
     elif S_G == "old fit":
@@ -246,9 +245,11 @@ def g_tophat(z, zb, dzb, NINT = 10000, S_G = "LSST_INTERPOL", MAXMAG = False): #
     return result
 
 def sg5minus2(z, mstar):
-    return (5 * sg_interp(z, MAXMAG = mstar) -2 )
+    # return (5 * sg_interp(z, MAXMAG = mstar) -2 )
+    return (5 * sg(z, MAXMAG = mstar) -2 )
 
-def g(z, zb, dzb, mstar, NINT = 10000): #first we try trapz, later something better
+
+def g_old(z, zb, dzb, mstar, NINT = 10000): #first we try trapz, later something better
     """compare with handwritten entry in notebook 2 from 14/12/2018"""
 
     if type(mstar) == bool:
@@ -264,7 +265,40 @@ def g(z, zb, dzb, mstar, NINT = 10000): #first we try trapz, later something bet
 # trying the bottom approach, splitting up the integral
     fac1 = sg5minus2(zint, mstar)
     fac2 = W_dndz(zint, zmin, zmax, mstar)
-    # fac2 = 1
+
+
+    fac12 = fac1*fac2
+
+    fac3 = 1/rCom(zint)
+
+    integral1 = np.trapz(fac12, zint)
+    integral2 = np.trapz(fac12*fac3,zint)
+
+    rcomtab = rCom(z)
+
+    return rcomtab * integral1 - rcomtab**2 * integral2
+
+def g(z, zb, dzb, mstar, NINT = 10000): #first we try trapz, later something better
+    """compare with handwritten entry in notebook 2 from 14/12/2018"""
+
+    if type(mstar) == bool:
+        raise ValueError("Need mstar to be given!")
+    zmin = zb - dzb
+    zmax = zb + dzb
+    z = np.atleast_1d(z)
+    if (z>zmin).any():
+        raise ValueError("foreground z must not lie within the background")
+
+    zint = np.linspace(zmin, zmax, NINT) #going reverse, multiply integral with -1
+
+# trying the bottom approach, splitting up the integral
+    # fac1 = sg5minus2(zint, mstar)
+    # fac2 = W_dndz(zint, zmin, zmax, mstar)
+
+
+    # fac12 = fac1*fac2
+    fac1 = sgng_interp(zint, mstar)
+    fac2 = 1 / dndz_norm(zmin, zmax, mstar)
     fac12 = fac1*fac2
     fac3 = 1/rCom(zint)
 
@@ -275,19 +309,6 @@ def g(z, zb, dzb, mstar, NINT = 10000): #first we try trapz, later something bet
 
     return rcomtab * integral1 - rcomtab**2 * integral2
 
-# # trying the full integral...
-#     rtabf = rCom(z)
-#     rtabb = rCom(zint)
-#     fac1 = 1 - np.outer(rtabf,1/rtabb)
-#     fac2 = (5 * sg_interp(zint, MAXMAG = mstar) -2 )
-#     fac3 = W_dndz(zint, zmin, zmax, mstar)
-#
-#     # ztrapz = np.outer(zint, np.ones(len(z)))
-#     integrand = fac1*fac2*fac3
-#     integral = np.trapz(integrand, zint, axis = 1)
-#     if (fac2<0).any():
-#         print "ALARM"
-#     return rtabf * integral
 
 
 def g_original(z, zb, dzb, NINT = 10000): #new standard to use cumtrapz, also with sg inside the integration
@@ -322,7 +343,7 @@ def g_original(z, zb, dzb, NINT = 10000): #new standard to use cumtrapz, also wi
     return result
 
 
-def Cl_HIxmag_CAMB(ltable, zf, delta_zf, zb, delta_zb, Nint = 500, S_G = "LSST_INTERPOL", MAXMAG = False):
+def Cl_HIxmag_CAMB(ltable, zf, delta_zf, zb, delta_zb, Nint = 500, MAXMAG = False):
     """ltable, zf foreground redshift, zb background redshift,
     delta_zf foreground redshift widht, Nint integration steps"""
 
@@ -534,15 +555,12 @@ def bHI(z): #fit from Alkistis, apparently from the 'red book', but I have not c
 
 
 
-ztab_LSST = np.loadtxt(LSST["sg_file_z"])
-magmaxtab_LSST = np.loadtxt(LSST["sg_file_magmax"] )
-sgtab_LSST = np.loadtxt(LSST["sg_file"] ).T #for some weird reason interp2d works this way, we need the transpose
-# logsgtab_LSST = np.loadtxt(LSST["logsg_file"] ).T #for some weird reason interp2d works this way, we need the transpose
-# logsg_interpolation_func = interp2d(ztab_LSST, magmaxtab_LSST, logsgtab_LSST, kind = 'cubic', bounds_error = False)
-# def sg_interpolation_func(zz, magmag):
-#     return np.exp(logsg_interpolation_func(zz, magmag) )
+ztab_LSST = np.loadtxt(LSST["sgng_file_z"])
+magmaxtab_LSST = np.loadtxt(LSST["sgng_file_magmax"] )
+sgngtab_LSST = np.loadtxt(LSST["sgng_file"] ) #(5sg-2)ng
 
-sg_interpolation_func = interp2d(ztab_LSST, magmaxtab_LSST, sgtab_LSST, kind = 'cubic', bounds_error = False)
+
+sgng_interpolation_func = interp2d(ztab_LSST, magmaxtab_LSST, sgngtab_LSST.T, kind = 'cubic', bounds_error = False)
 
 
 def sg(z, experiment = LSST, MAXMAG = False):#, force_calc = False):
@@ -565,17 +583,19 @@ def sg(z, experiment = LSST, MAXMAG = False):#, force_calc = False):
     res[np.where(np.isnan(res))[0]] = 0
     return np.array(res)
 
-def sg_interp(z, MAXMAG = False, experiment = LSST):#this is an interpolated version of the sg function from david, to be much much faster!
+def sgng_interp(z, MAXMAG = False, experiment = LSST):#this is an interpolated version of the (5sg-2)ng, to speed things up!
+    z = np.atleast_1d(z)
     if type(MAXMAG) == bool and MAXMAG == False:
         mmax = LSST['rmax']
     else:
         mmax = MAXMAG
-    res = sg_interpolation_func(z,mmax)
-    if type(z) == np.ndarray and z[-1]<z[0]: #in this case z is an array running from big to small
-        return res[::-1] #I do not understand exactly why I the interp function needs to be turned around in this case, but it seem like it!
+    res = sgng_interpolation_func(z,mmax).T
+    # if type(z) == np.ndarray and z[-1]<z[0]: #in this case z is an array running from big to small
+    #     return res[::-1] #I do not understand exactly why I the interp function needs to be turned around in this case, but it seem like it!
     return res
-# #test:
-#     return sg(z, experiment = LSST)
+
+
+
 def sg_old(z, experiment = CLAR_zhangpen, USE_ALPHA = False, MAXMAG = False): #number count slope. Fit taken from eq 23 in 1611.01322v2
     """if USE_ALPHA, then sg is just caluclated from alpha"""
     if not (type(MAXMAG) == bool and MAXMAG == False):
@@ -951,7 +971,7 @@ nztab_file *= 60**2 * 41200 #in arcmin
 Nz_func = np.trapz(nztab_func, zint)
 Nz_file = np.trapz(nztab_file, zint)
 rescale = Nz_file/Nz_func
-print "\n", "#$"*30, "\n", "Rescaling the galaxy number density by a factor of {} to match the gold sample".format(rescale), "\n", "#$"*30, "\n"
+print "\n", "#$"*30, "\n", "Rescaling the galaxy number density by a factor of {} to match the gold sample with {} total galaxies".format(rescale, Nz_file), "\n", "#$"*30, "\n"
 
 
 
@@ -1001,16 +1021,27 @@ beta_inter = interp1d(powexp_readtab[paramnames[0]], powexp_readtab[paramnames[4
 def powexp_allparams(mstar):
     return a0_inter(mstar), zstar_inter(mstar), alpha_inter(mstar), beta_inter(mstar)
 
-def dndz_fit(z, mstar): #mstar must be float, not array
+def dndz_fit(z, mstar): # fits nofz! mstar must be float, not array
     aa, zzstar, alal, betbet = powexp_allparams(mstar)
     return powexp(z, aa, zzstar, alal, betbet)
 
-def W_dndz(z, zmin, zmax, mstar):
+def dndz_norm(zmin, zmax, mstar, FIT = True):
+    """gets the normalization such that dndz integrates to one between zmin and zmax"""
+    ztab = np.linspace(zmin,zmax, 1000)
+    if FIT:
+        dnndz = dndz_fit(ztab, mstar)
+    else:
+        dnndz = nofz(ztab, mstar)
+    return np.trapz(dnndz, ztab)
+
+def W_dndz(z, zmin, zmax, mstar, FIT = False):
     z = np.atleast_1d(z)
     if len(z)<5: #this is too small for normalization!
         raise ValueError("W_dndz needs to get vector redshift with length more than 5")
-
-    dnndz = dndz_fit(z, mstar)
+    if FIT:
+        dnndz = dndz_fit(z, mstar)
+    else:
+        dnndz = nofz(z, mstar)
     if (zmin > z).any() or (zmax < z).any(): #some of our redshifts lie outside the bin
         cond = (z<zmin) | (z>zmax) #condition to be outside the [zmin, zmax] interval
         dnndz[cond] = 0 #we want to discard everything outside the bin!
@@ -1022,19 +1053,18 @@ def W_dndz(z, zmin, zmax, mstar):
 
 #two functions to get redshift bins (just to clean up the code:
 
-def get_bg_bin_for_fgzmax(fzmax, mstar, bufferz = 0.1, OPTIMIZE_ZMIN = False):
-    bzmax = zmax_of_MAXMAG(mstar)
-    bzmin1 = fzmax + bufferz #minimum possible minimum redshift
+def get_bg_bin_for_fgzmax(fzmax, bufferz = 0.1, bzmax = 3.9):
+    # bzmax = zmax_of_MAXMAG(mstar)
+    #bzmax = 3.9 for LSST. Note the end of the interpolation range of sgng at 3.9
+    bzmin = fzmax + bufferz #minimum possible minimum redshift
 
     #now look for the place where the sign of 5sg-2 flips:
-    zztab = np.linspace(bzmin1, bzmax, 1000)
-    sg5m2 = sg5minus2(zztab, mstar)
-    if OPTIMIZE_ZMIN and (sg5m2<0).any():
-        flipi = np.where(sg5m2<0)[0][-1]+1 #+1 because we want first index after sign flip
-        bzmin2 = zztab[np.int(flipi)]
-        bzmin = np.amax([bzmin1, bzmin2])
-    else:
-        bzmin = bzmin1 #ignore 5sg-2!
+    #we do this to improve for SKA b2, which can't be optimized for mstar within the range [23,27]
+    # zztab = np.linspace(0.1, 1., 1000)
+    # sg5m2 = sg5minus2(zztab, 23) #because this is the lowest mstar we have implemented
+    # flipi = np.where(sg5m2<0)[0][-1]+1 #+1 because we want first index after sign flip
+    # bzmin2 = zztab[np.int(flipi)]
+    # bzmin = np.amax([bzmin, bzmin2])
 
 
     zb = (bzmin +bzmax)/2
@@ -1081,7 +1111,7 @@ def S2N_of_mstar_and_zf(mmag, ltabbb, zfmin, zfmax, bufferz = 0.1, SURVEY = [SKA
     # bzzmax = zmax_of_MAXMAG(mmag)
     zzf = (zfmin+zfmax)/2
     dzzf = (zfmax-zfmin)/2
-    bzzmin, bzzmax, bzz, bdzz = get_bg_bin_for_fgzmax(zfmax, mmag, bufferz = bufferz)
+    bzzmin, bzzmax, bzz, bdzz = get_bg_bin_for_fgzmax(zfmax, bufferz = bufferz)
     powspeclisttt = [P_FUNC_LIST[0](ltabbb, zfmin, zfmax),
                             P_FUNC_LIST[1](ltabbb, bzzmin, bzzmax, mmag),
                             P_FUNC_LIST[2](ltabbb, zzf, dzzf, bzz, bdzz, MAXMAG = mmag)]

@@ -35,7 +35,8 @@ SKA = {
     "mode":             "single_dish",
     "Ndish":            133+64,
     "Tsys":             30 * 1e3, #mK
-    "S_area":           7.6,    #25000 sq deg = 7.6 [sterrad]
+    # "S_area":           7.6,    #25000 sq deg = 7.6 [sterrad]
+    "S_area":           5.15,    #fsky of 0.41 as in the multitracer paper [sterrad]
     "t_int":            8760,   #1 yr in [h], for comparison with hirax
     "Ddish":            (133 * 15 + 64 * 13.5) / (133+64), #average [m]
     "Nbeam":            1,
@@ -72,8 +73,11 @@ LSST = {
     "dNdz":         "/Users/amadeus/Documents/PhD/work/multitracer/LSST/nz_LSST_gold_sqdeg.dat",
     "rmax":27, #see bottom of page 71 in the LSST science book 0912.0201
     'sg_file_z': '/Users/amadeus/Documents/PhD/work/MagBias/sg_data/sg_LSST_z.txt',
+    'sgng_file_z': '/Users/amadeus/Documents/PhD/work/MagBias/sg_data/sgng_LSST_z.txt',
     'sg_file_magmax': '/Users/amadeus/Documents/PhD/work/MagBias/sg_data/sg_LSST_mag.txt',
+    'sgng_file_magmax': '/Users/amadeus/Documents/PhD/work/MagBias/sg_data/sgng_LSST_mag.txt',
     'sg_file': '/Users/amadeus/Documents/PhD/work/MagBias/sg_data/sg_LSST.txt',
+    'sgng_file': '/Users/amadeus/Documents/PhD/work/MagBias/sg_data/sgng_LSST.txt', #for numerical ease, (5sg-2)*ng
     # 'logsg_file': '/Users/amadeus/Documents/PhD/work/MagBias/sg_data/logsg_LSST.txt', #logarithm is easier to interpolate
     }
 LSST_nosgfit = dict(LSST)# the same but without the sg_file

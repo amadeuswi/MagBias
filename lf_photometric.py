@@ -111,10 +111,18 @@ def lm_all_r(mr,z) :
 ########################
 def lm_blue_r(mr,z) :
     """LF for blue galaxies in the r-band."""
+    z = np.atleast_1d(z)
     lred=lm_red_r(mr,z)
     lall=lm_all_r(mr,z)
 
-    return lall-lred
+    # return lall-lred
+    ldiff = lall-lred
+    ldiff_neg = ldiff<=0
+    if ldiff_neg.any:
+        ldiff[ldiff_neg]=0
+    if len(ldiff) == 1:
+        return ldiff[0]
+    return ldiff
 
 
 ###################################
@@ -168,14 +176,35 @@ def cumulative_lumfun(mag_lim_red,mag_lim_blue,z,typ) :
     lnlum_max=-35.*norm
 
     if typ=="red" :
-        return quad(lumfun,norm*mag_lim_red,lnlum_max,args=(z,typ))[0]
+        # return quad(lumfun,norm*mag_lim_red,lnlum_max,args=(z,typ))[0]
+        clred = [quad(lumfun,norm*mag_lim_red,lnlum_max,args=(z[i],typ))[0] for i in range(len(z))]#amadeus' edit
+        return np.array(clred)
+
     elif typ=="blue" :
-        return quad(lumfun,norm*mag_lim_blue,lnlum_max,args=(z,typ))[0]
+        # return quad(lumfun,norm*mag_lim_blue,lnlum_max,args=(z,typ))[0]
+        clblue =  [quad(lumfun,norm*mag_lim_blue,lnlum_max,args=(z[i],typ))[0] for i in range(len(z))]#amadeus' edit
+        return np.array(clblue)
     elif typ=="all" :
         # clred=[quad(lumfun,norm*mag_lim_red,lnlum_max,args=(zzz,"red"))[0] for zzz in z]
         clred=[quad(lumfun,norm*mag_lim_red[i],lnlum_max,args=(z[i],"red"))[0] for i in range(len(z))]
         clblue=[quad(lumfun,norm*mag_lim_blue[i],lnlum_max,args=(z[i],"blue"))[0] for i in range(len(z))]
         return np.array(clred)+np.array(clblue)
+
+
+
+#by Amadeus: testing the cumulative lumfun
+def cumulative_lumfun_all(mag_lim,z,typ) :
+    """Cumulative luminosity function."""
+    z = np.atleast_1d(z)
+    mag_lim = np.atleast_1d(mag_lim)
+    norm=-0.4*np.log(10.)
+    lnlum_max=-35.*norm
+
+    if typ!="all" :
+        raise ValueError("this function only works for type all!")
+
+    clall=[quad(lumfun,norm*mag_lim[i],lnlum_max,args=(z[i],"all"))[0] for i in range(len(z))]
+    return np.array(clall)
 
 
 ########
