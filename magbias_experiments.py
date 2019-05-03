@@ -43,6 +43,18 @@ SKA = {
     "Name" :            "SKA",
     }
 
+#bands 1 and 2 are copies of SKA with different mean Tsys:
+#do not forget that they have different but overlapping frequency coverage
+#numin and numax taken from /Users/amadeus/Documents/PhD/work/multitracer/experiments/SKA_Tsys/band1_Tsys.txt
+SKA1 = dict(SKA)
+SKA2 = dict(SKA)
+SKA1["Tsys"] = 30*1e3 #very rough, underestimating at low nu - but for this  analysis okay
+SKA1["numin"] = 351 #[MHz]
+SKA1["numax"] = 1059
+
+SKA2["Tsys"] = 20*1e3 #overestimating slightly, more like 19 or 18
+SKA2["numin"] = 966 #[MHz]
+SKA2["numax"] = 1758
 
 hirax = {
     "mode":             'interferometer',

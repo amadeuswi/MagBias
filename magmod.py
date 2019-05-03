@@ -32,7 +32,7 @@ H_z = hom.H_z; E_z = hom.E_z
 
 #Omega_bar=f_bar*Omega_m
 Omega_bar=0.047 #baryons
-Omega_HI=2.45*10**-4/h #where did I get that from?
+# Omega_HI=2.45*10**-4/h #from Battye
 
 
 
@@ -66,6 +66,20 @@ def T_obs(z):
 def Tb_redbook(zc):
     return 0.0559+0.2324*zc-0.024*pow(zc,2)
 
+# def Tb_new(z): #from Battye paper
+#     #returns mK
+#     f1 = 44
+#     f2 = (1+z)**2/E_z(z)
+#     f3 = 1 #we assume that Omega_HI*h = 2.45e-4 at all times
+#     return f1*f2*f3*1e-3
+#
+# def Tb_bull(z): #from late-time cosmology
+#     #return mK
+#     f1 = 566*h
+#     f2 = (1+z)**2/E_z(z)
+#     f3 = 2.45e-4/0.003/h
+#     return f1*f2*f3*1e-3
+
 
 def W_tophat(z,zmin,zmax):
     """arguments: z, zmin, zmax
@@ -80,29 +94,29 @@ def W_tophat(z,zmin,zmax):
 ###################################################################################################################################
 #BBKS stuff:
 ###################################################################################################################################
-constBBKS=1 #to be changed later
-
-def W_k(k):
-	return 3/k**3*(np.sin(k)-k*np.cos(k))
-
-def q(k): ##LOOK
-	Gam=Omega_m*h**2*np.exp(-Omega_bar*(1+(2*h)**0.5/Omega_m))
-	return k/Gam # this way consistent with Battye...[1/Mpc]
-
-def T_BBKS(k):
-	q_ev=q(k)
-	return np.log(1+2.34*q_ev)/(2.34*q_ev)*(1+3.89*q_ev+(16.1*q_ev)**2+(5.46*q_ev)**3+(6.71*q_ev)**4)**(-1./4)
-
-def P_cdm_BBKS(k): #No z dependence
-	return constBBKS*k**n_s*T_BBKS(k)**2
-
-def T_HI_BBKS(k,z):
-	return (T_obs(z)**2*k**3*P_cdm_BBKS(k)/(2*np.pi**2))**0.5
-
-def sigma_BBKS(R):
-	return (1./(2*np.pi**2)*integrate.quad(lambda k: P_cdm_BBKS(k)*W_k(k*R)**2*k**2,0.,np.inf,full_output=1)[0])**0.5
-constBBKS=(sigma8/sigma_BBKS(8/h))**2
-print 'sigma_8_BBKS =', sigma_BBKS(8/h)
+# constBBKS=1 #to be changed later
+#
+# def W_k(k):
+# 	return 3/k**3*(np.sin(k)-k*np.cos(k))
+#
+# def q(k): ##LOOK
+# 	Gam=Omega_m*h**2*np.exp(-Omega_bar*(1+(2*h)**0.5/Omega_m))
+# 	return k/Gam # this way consistent with Battye...[1/Mpc]
+#
+# def T_BBKS(k):
+# 	q_ev=q(k)
+# 	return np.log(1+2.34*q_ev)/(2.34*q_ev)*(1+3.89*q_ev+(16.1*q_ev)**2+(5.46*q_ev)**3+(6.71*q_ev)**4)**(-1./4)
+#
+# def P_cdm_BBKS(k): #No z dependence
+# 	return constBBKS*k**n_s*T_BBKS(k)**2
+#
+# def T_HI_BBKS(k,z):
+# 	return (T_obs(z)**2*k**3*P_cdm_BBKS(k)/(2*np.pi**2))**0.5
+#
+# def sigma_BBKS(R):
+# 	return (1./(2*np.pi**2)*integrate.quad(lambda k: P_cdm_BBKS(k)*W_k(k*R)**2*k**2,0.,np.inf,full_output=1)[0])**0.5
+# constBBKS=(sigma8/sigma_BBKS(8/h))**2
+# print 'sigma_8_BBKS =', sigma_BBKS(8/h)
 
 
 ###################################################################################################################################
@@ -430,7 +444,7 @@ def C_l_gg_CAMB(ltable,zmin,zmax, mstar, Nint = 500):
     return result
 
 
-def DELTA_Cl_HIxmag(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = "CV", MAXMAG = False, nside = 256):
+def DELTA_Cl_HIxmag(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = "CV", MAXMAG = False, nside = 256, D_ELL = False):
     """zf is mean redshift of foregrounds, dzf is half the width of the bin. Same goes for zb and dzb.
     power_spectra_list needs to be a list [ClHIHI, Clgg, ClHIXmag].
     Example [C_l_HIHI_CAMB, C_l_gg_CAMB, Cl_HIxmag_CAMB].
@@ -443,10 +457,14 @@ def DELTA_Cl_HIxmag(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = "CV",
     HIHI, gg, XX = power_spectra_list
     X2 = XX**2
 
+    if type(D_ELL) == bool and D_ELL == False:
+        d_ell = np.abs(np.mean ( ltable[:-1] - ltable[1:]))
+    else:
+        d_ell = D_ELL
+    print "ell resolution {}".format(d_ell)
 
-    # d_ell = np.abs(np.mean ( ltable[:-1] - ltable[1:]))
-    d_ell = 1
-    print "we assume d_ell = 1"
+    # d_ell = 1
+    # print "we assume d_ell = 1"
     #perfect survey:
     noisestart = clock()
     if type(SURVEY)==str and SURVEY == "CV":
@@ -483,12 +501,12 @@ def DELTA_Cl_HIxmag(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = "CV",
     result = np.sqrt(num/denom)
     return result
 
-def S2N(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = "CV", MAXMAG = False):
+def S2N(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = "CV", MAXMAG = False, D_ELL = False):
     #temporarily forcing the use of MAXMAG if survey not CV:
     if type(MAXMAG) == bool and MAXMAG == False:
         raise ValueError("please use MAXMAG!")
     start = clock()
-    delt = DELTA_Cl_HIxmag(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = SURVEY, MAXMAG = MAXMAG)
+    delt = DELTA_Cl_HIxmag(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = SURVEY, MAXMAG = MAXMAG, D_ELL = D_ELL)
     mid = clock();
     # signal = power_spectra_list[2](ltable, zf, dzf, zb, dzb)
     signal = power_spectra_list[2]
@@ -1107,7 +1125,7 @@ def zmax_of_MAXMAG(MAXMAG, NNUM = 100):
 
 #to calculate the S2N more easily, using mstar and fg redshift range.
 def S2N_of_mstar_and_zf(mmag, ltabbb, zfmin, zfmax, bufferz = 0.1, SURVEY = [SKA, LSST],
-                        P_FUNC_LIST = [C_l_HIHI_CAMB, C_l_gg_CAMB, Cl_HIxmag_CAMB]):
+                        P_FUNC_LIST = [C_l_HIHI_CAMB, C_l_gg_CAMB, Cl_HIxmag_CAMB], D_ELL = False):
     # bzzmax = zmax_of_MAXMAG(mmag)
     zzf = (zfmin+zfmax)/2
     dzzf = (zfmax-zfmin)/2
@@ -1115,8 +1133,8 @@ def S2N_of_mstar_and_zf(mmag, ltabbb, zfmin, zfmax, bufferz = 0.1, SURVEY = [SKA
     powspeclisttt = [P_FUNC_LIST[0](ltabbb, zfmin, zfmax),
                             P_FUNC_LIST[1](ltabbb, bzzmin, bzzmax, mmag),
                             P_FUNC_LIST[2](ltabbb, zzf, dzzf, bzz, bdzz, MAXMAG = mmag)]
-    res = S2N(ltabbb, zzf, dzzf, bzz, bdzz, powspeclisttt, SURVEY=SURVEY, MAXMAG = mmag)
+    res = S2N(ltabbb, zzf, dzzf, bzz, bdzz, powspeclisttt, SURVEY=SURVEY, MAXMAG = mmag, D_ELL = D_ELL)
     return res
 
-def S2N_for_opt(mmag, ltabbb, zfmin, zfmax, bufferz, SURVEY, P_FUNC_LIST):
-    return -S2N_of_mstar_and_zf(mmag, ltabbb, zfmin, zfmax, bufferz = 0.1, SURVEY = [SKA, LSST],P_FUNC_LIST = [C_l_HIHI_CAMB, C_l_gg_CAMB, Cl_HIxmag_CAMB])[0]
+def S2N_for_opt(mmag, ltabbb, zfmin, zfmax, bufferz, SURVEY, P_FUNC_LIST, D_ELL = False):
+    return -S2N_of_mstar_and_zf(mmag, ltabbb, zfmin, zfmax, bufferz = 0.1, SURVEY = [SKA, LSST],P_FUNC_LIST = [C_l_HIHI_CAMB, C_l_gg_CAMB, Cl_HIxmag_CAMB], D_ELL = D_ELL)[0]
