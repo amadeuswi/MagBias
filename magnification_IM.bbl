@@ -1,0 +1,51 @@
+\begin{thebibliography}{}
+\makeatletter
+\relax
+\def\mn@urlcharsother{\let\do\@makeother \do\$\do\&\do\#\do\^\do\_\do\%\do\~}
+\def\mn@doi{\begingroup\mn@urlcharsother \@ifnextchar [ {\mn@doi@}
+  {\mn@doi@[]}}
+\def\mn@doi@[#1]#2{\def\@tempa{#1}\ifx\@tempa\@empty \href
+  {http://dx.doi.org/#2} {doi:#2}\else \href {http://dx.doi.org/#2} {#1}\fi
+  \endgroup}
+\def\mn@eprint#1#2{\mn@eprint@#1:#2::\@nil}
+\def\mn@eprint@arXiv#1{\href {http://arxiv.org/abs/#1} {{\tt arXiv:#1}}}
+\def\mn@eprint@dblp#1{\href {http://dblp.uni-trier.de/rec/bibtex/#1.xml}
+  {dblp:#1}}
+\def\mn@eprint@#1:#2:#3:#4\@nil{\def\@tempa {#1}\def\@tempb {#2}\def\@tempc
+  {#3}\ifx \@tempc \@empty \let \@tempc \@tempb \let \@tempb \@tempa \fi \ifx
+  \@tempb \@empty \def\@tempb {arXiv}\fi \@ifundefined
+  {mn@eprint@\@tempb}{\@tempb:\@tempc}{\expandafter \expandafter \csname
+  mn@eprint@\@tempb\endcsname \expandafter{\@tempc}}}
+
+\bibitem[\protect\citeauthoryear{Alonso, Bull, Ferreira, Maartens  \&
+  Santos}{Alonso et~al.}{2015}]{0004-637X-814-2-145}
+Alonso D.,  Bull P.,  Ferreira P.~G.,  Maartens R.,   Santos M.~G.,  2015, The
+  Astrophysical Journal, 814, 145
+
+\bibitem[\protect\citeauthoryear{Hall, Bonvin  \& Challinor}{Hall
+  et~al.}{2013}]{PhysRevD.87.064026}
+Hall A.,  Bonvin C.,   Challinor A.,  2013, \mn@doi [Phys. Rev. D]
+  {10.1103/PhysRevD.87.064026}, 87, 064026
+
+\bibitem[\protect\citeauthoryear{{Limber}}{{Limber}}{1954}]{1954ApJ...119..655L}
+{Limber} D.~N.,  1954, \mn@doi [\apj] {10.1086/145870}, \href
+  {https://ui.adsabs.harvard.edu/#abs/1954ApJ...119..655L} {119, 655}
+
+\bibitem[\protect\citeauthoryear{{Loverde} \& {Afshordi}}{{Loverde} \&
+  {Afshordi}}{2008}]{2008PhRvD..78l3506L}
+{Loverde} M.,  {Afshordi} N.,  2008, \mn@doi [\prd]
+  {10.1103/PhysRevD.78.123506}, \href
+  {https://ui.adsabs.harvard.edu/#abs/2008PhRvD..78l3506L} {78, 123506}
+
+\bibitem[\protect\citeauthoryear{{Scranton} et~al.,}{{Scranton}
+  et~al.}{2005}]{2005ApJ...633..589S}
+{Scranton} R.,  et~al., 2005, \mn@doi [\apj] {10.1086/431358}, \href
+  {https://ui.adsabs.harvard.edu/#abs/2005ApJ...633..589S} {633, 589}
+
+\bibitem[\protect\citeauthoryear{{Ziour} \& {Hui}}{{Ziour} \&
+  {Hui}}{2008}]{2008PhRvD..78l3517Z}
+{Ziour} R.,  {Hui} L.,  2008, \mn@doi [\prd] {10.1103/PhysRevD.78.123517},
+  \href {https://ui.adsabs.harvard.edu/#abs/2008PhRvD..78l3517Z} {78, 123517}
+
+\makeatother
+\end{thebibliography}
