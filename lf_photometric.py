@@ -272,6 +272,31 @@ def s_magbias(z,rmax,typ) : #trying to speed it up
     return 0.4*lumphi/lumPhi
 
 
+
+#testing function from amadeus:
+def s_magbias_doublereturn(z,rmax,typ) : #just like the original, but different return
+    """Magnification bias."""
+    z = np.atleast_1d(z)
+    z[np.where(z==0.0)]+=0.001
+
+    ilten=1./np.log(10.)
+    norm=2.5*ilten
+    maglim_red=app2abs(rmax,z,"red")
+    maglim_blue=app2abs(rmax,z,"blue")
+    lumPhi=cumulative_lumfun(maglim_red,maglim_blue,z,typ)
+    if typ=="red" :
+        lumphi=norm*lumfun_mag(maglim_red,z,typ)
+    elif typ=="blue" :
+        lumphi=norm*lumfun_mag(maglim_blue,z,typ)
+    elif typ=="all" :
+        lumphi_red=norm*lumfun_mag(maglim_blue,z,"red")
+        lumphi_blue=norm*lumfun_mag(maglim_blue,z,"blue")
+        lumphi=lumphi_blue+lumphi_red
+
+#this is the only line changed:
+    return lumphi,lumPhi
+
+
 ############
 # f_evo(z) #
 ############

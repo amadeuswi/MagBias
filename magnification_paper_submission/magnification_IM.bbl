@@ -1,0 +1,252 @@
+\begin{thebibliography}{}
+\makeatletter
+\relax
+\def\mn@urlcharsother{\let\do\@makeother \do\$\do\&\do\#\do\^\do\_\do\%\do\~}
+\def\mn@doi{\begingroup\mn@urlcharsother \@ifnextchar [ {\mn@doi@}
+  {\mn@doi@[]}}
+\def\mn@doi@[#1]#2{\def\@tempa{#1}\ifx\@tempa\@empty \href
+  {http://dx.doi.org/#2} {doi:#2}\else \href {http://dx.doi.org/#2} {#1}\fi
+  \endgroup}
+\def\mn@eprint#1#2{\mn@eprint@#1:#2::\@nil}
+\def\mn@eprint@arXiv#1{\href {http://arxiv.org/abs/#1} {{\tt arXiv:#1}}}
+\def\mn@eprint@dblp#1{\href {http://dblp.uni-trier.de/rec/bibtex/#1.xml}
+  {dblp:#1}}
+\def\mn@eprint@#1:#2:#3:#4\@nil{\def\@tempa {#1}\def\@tempb {#2}\def\@tempc
+  {#3}\ifx \@tempc \@empty \let \@tempc \@tempb \let \@tempb \@tempa \fi \ifx
+  \@tempb \@empty \def\@tempb {arXiv}\fi \@ifundefined
+  {mn@eprint@\@tempb}{\@tempb:\@tempc}{\expandafter \expandafter \csname
+  mn@eprint@\@tempb\endcsname \expandafter{\@tempc}}}
+
+\bibitem[\protect\citeauthoryear{Abate et~al.}{Abate
+  et~al.}{2012}]{Abate:2012za}
+Abate A.,  et~al., 2012
+
+\bibitem[\protect\citeauthoryear{Abbott et~al.}{Abbott
+  et~al.}{2016}]{Abbott:2016ktf}
+Abbott T.,  et~al., 2016, \mn@doi [Mon. Not. Roy. Astron. Soc.]
+  {10.1093/mnras/stw641}, 460, 1270
+
+\bibitem[\protect\citeauthoryear{Alonso, Bull, Ferreira, Maartens  \&
+  Santos}{Alonso et~al.}{2015}]{0004-637X-814-2-145}
+Alonso D.,  Bull P.,  Ferreira P.~G.,  Maartens R.,   Santos M.~G.,  2015, The
+  Astrophysical Journal, 814, 145
+
+\bibitem[\protect\citeauthoryear{Amendola et~al.}{Amendola
+  et~al.}{2018}]{Amendola:2016saw}
+Amendola L.,  et~al., 2018, \mn@doi [Living Rev. Rel.]
+  {10.1007/s41114-017-0010-3}, 21, 2
+
+\bibitem[\protect\citeauthoryear{Bacon, Refregier  \& Ellis}{Bacon
+  et~al.}{2000}]{Bacon:2000sy}
+Bacon D.~J.,  Refregier A.~R.,   Ellis R.~S.,  2000, \mn@doi [Mon. Not. Roy.
+  Astron. Soc.] {10.1046/j.1365-8711.2000.03851.x}, 318, 625
+
+\bibitem[\protect\citeauthoryear{Bacon et~al.}{Bacon
+  et~al.}{2018}]{Bacon:2018dui}
+Bacon D.~J.,  et~al., 2018, Submitted to: Publ. Astron. Soc. Austral.
+
+\bibitem[\protect\citeauthoryear{Bartelmann \& Schneider}{Bartelmann \&
+  Schneider}{2001}]{Bartelmann:1999yn}
+Bartelmann M.,  Schneider P.,  2001, \mn@doi [Phys. Rept.]
+  {10.1016/S0370-1573(00)00082-X}, 340, 291
+
+\bibitem[\protect\citeauthoryear{Battye, Browne, Dickinson, Heron, Maffei  \&
+  Pourtsidou}{Battye et~al.}{2013}]{Battye:2012tg}
+Battye R.~A.,  Browne I. W.~A.,  Dickinson C.,  Heron G.,  Maffei B.,
+  Pourtsidou A.,  2013, \mn@doi [Mon. Not. Roy. Astron. Soc.]
+  {10.1093/mnras/stt1082}, 434, 1239
+
+\bibitem[\protect\citeauthoryear{{Bernstein} \& {Jain}}{{Bernstein} \&
+  {Jain}}{2004}]{2004ApJ...600...17B}
+{Bernstein} G.,  {Jain} B.,  2004, \mn@doi [\apj] {10.1086/379768}, \href
+  {https://ui.adsabs.harvard.edu/\#abs/2004ApJ...600...17B} {600, 17}
+
+\bibitem[\protect\citeauthoryear{Bonvin \& Durrer}{Bonvin \&
+  Durrer}{2011}]{Bonvin:2011bg}
+Bonvin C.,  Durrer R.,  2011, \mn@doi [Phys. Rev.]
+  {10.1103/PhysRevD.84.063505}, D84, 063505
+
+\bibitem[\protect\citeauthoryear{Bull, Ferreira, Patel  \& Santos}{Bull
+  et~al.}{2015}]{0004-637X-803-1-21}
+Bull P.,  Ferreira P.~G.,  Patel P.,   Santos M.~G.,  2015, The Astrophysical
+  Journal, 803, 21
+
+\bibitem[\protect\citeauthoryear{Cunnington, Wolz, Pourtsidou  \&
+  Bacon}{Cunnington et~al.}{2019a}]{Cunnington:2019lvb}
+Cunnington S.,  Wolz L.,  Pourtsidou A.,   Bacon D.,  2019a
+
+\bibitem[\protect\citeauthoryear{Cunnington, Harrison, Pourtsidou  \&
+  Bacon}{Cunnington et~al.}{2019b}]{Cunnington:2018zxg}
+Cunnington S.,  Harrison I.,  Pourtsidou A.,   Bacon D.,  2019b, \mn@doi [Mon.
+  Not. Roy. Astron. Soc.] {10.1093/mnras/sty2928}, 482, 3341
+
+\bibitem[\protect\citeauthoryear{Duncan, Joachimi, Heavens, Heymans  \&
+  Hildebrandt}{Duncan et~al.}{2014}]{Duncan:2013haa}
+Duncan C.,  Joachimi B.,  Heavens A.,  Heymans C.,   Hildebrandt H.,  2014,
+  \mn@doi [Mon. Not. Roy. Astron. Soc.] {10.1093/mnras/stt2060}, 437, 2471
+
+\bibitem[\protect\citeauthoryear{{Gabasch} et~al.,}{{Gabasch}
+  et~al.}{2006}]{2006A&A...448..101G}
+{Gabasch} A.,  et~al., 2006, \mn@doi [\aap] {10.1051/0004-6361:20053986}, \href
+  {https://ui.adsabs.harvard.edu/abs/2006A&A...448..101G} {448, 101}
+
+\bibitem[\protect\citeauthoryear{Garcia-Fernandez et~al.}{Garcia-Fernandez
+  et~al.}{2018}]{Garcia-Fernandez:2016oud}
+Garcia-Fernandez M.,  et~al., 2018, \mn@doi [Mon. Not. Roy. Astron. Soc.]
+  {10.1093/mnras/sty282}, 476, 1071
+
+\bibitem[\protect\citeauthoryear{Hall, Bonvin  \& Challinor}{Hall
+  et~al.}{2013}]{PhysRevD.87.064026}
+Hall A.,  Bonvin C.,   Challinor A.,  2013, \mn@doi [Phys. Rev. D]
+  {10.1103/PhysRevD.87.064026}, 87, 064026
+
+\bibitem[\protect\citeauthoryear{Heymans et~al.}{Heymans
+  et~al.}{2012}]{Heymans:2012gg}
+Heymans C.,  et~al., 2012, \mn@doi [Mon. Not. Roy. Astron. Soc.]
+  {10.1111/j.1365-2966.2012.21952.x}, 427, 146
+
+\bibitem[\protect\citeauthoryear{{Hildebrandt}, {van Waerbeke}  \&
+  {Erben}}{{Hildebrandt} et~al.}{2009}]{2009A&A...507..683H}
+{Hildebrandt} H.,  {van Waerbeke} L.,   {Erben} T.,  2009, \mn@doi [\aap]
+  {10.1051/0004-6361/200912655}, \href
+  {https://ui.adsabs.harvard.edu/\#abs/2009A&A...507..683H} {507, 683}
+
+\bibitem[\protect\citeauthoryear{{Hui}, {Gazta{\~n}aga}  \& {Loverde}}{{Hui}
+  et~al.}{2007}]{2007PhRvD..76j3502H}
+{Hui} L.,  {Gazta{\~n}aga} E.,   {Loverde} M.,  2007, \mn@doi [\prd]
+  {10.1103/PhysRevD.76.103502}, \href
+  {https://ui.adsabs.harvard.edu/abs/2007PhRvD..76j3502H} {76, 103502}
+
+\bibitem[\protect\citeauthoryear{{Jain} \& {Taylor}}{{Jain} \&
+  {Taylor}}{2003}]{2003PhRvL..91n1302J}
+{Jain} B.,  {Taylor} A.,  2003, \mn@doi [\prl] {10.1103/PhysRevLett.91.141302},
+  \href {https://ui.adsabs.harvard.edu/\#abs/2003PhRvL..91n1302J} {91, 141302}
+
+\bibitem[\protect\citeauthoryear{Kaiser, Wilson  \& Luppino}{Kaiser
+  et~al.}{2000}]{Kaiser:2000if}
+Kaiser N.,  Wilson G.,   Luppino G.~A.,  2000
+
+\bibitem[\protect\citeauthoryear{Kilbinger}{Kilbinger}{2015}]{Kilbinger:2014cea}
+Kilbinger M.,  2015, \mn@doi [Rept. Prog. Phys.]
+  {10.1088/0034-4885/78/8/086901}, 78, 086901
+
+\bibitem[\protect\citeauthoryear{{LSST Science Collaboration} et~al.,}{{LSST
+  Science Collaboration} et~al.}{2009}]{2009arXiv0912.0201L}
+{LSST Science Collaboration} et~al., 2009, arXiv e-prints, \href
+  {https://ui.adsabs.harvard.edu/\#abs/2009arXiv0912.0201L} {p.
+  arXiv:0912.0201}
+
+\bibitem[\protect\citeauthoryear{{Lewis}, {Challinor}  \& {Lasenby}}{{Lewis}
+  et~al.}{2000}]{2000ApJ...538..473L}
+{Lewis} A.,  {Challinor} A.,   {Lasenby} A.,  2000, \mn@doi [\apj]
+  {10.1086/309179}, \href
+  {https://ui.adsabs.harvard.edu/abs/2000ApJ...538..473L} {538, 473}
+
+\bibitem[\protect\citeauthoryear{{Limber}}{{Limber}}{1954}]{1954ApJ...119..655L}
+{Limber} D.~N.,  1954, \mn@doi [\apj] {10.1086/145870}, \href
+  {https://ui.adsabs.harvard.edu/#abs/1954ApJ...119..655L} {119, 655}
+
+\bibitem[\protect\citeauthoryear{{Loverde} \& {Afshordi}}{{Loverde} \&
+  {Afshordi}}{2008}]{2008PhRvD..78l3506L}
+{Loverde} M.,  {Afshordi} N.,  2008, \mn@doi [\prd]
+  {10.1103/PhysRevD.78.123506}, \href
+  {https://ui.adsabs.harvard.edu/#abs/2008PhRvD..78l3506L} {78, 123506}
+
+\bibitem[\protect\citeauthoryear{Mandelbaum}{Mandelbaum}{2018}]{Mandelbaum:2017jpr}
+Mandelbaum R.,  2018, \mn@doi [Ann. Rev. Astron. Astrophys.]
+  {10.1146/annurev-astro-081817-051928}, 56, 393
+
+\bibitem[\protect\citeauthoryear{Menard \& Bartelmann}{Menard \&
+  Bartelmann}{2002}]{Menard:2002vz}
+Menard B.,  Bartelmann M.,  2002, \mn@doi [Astron. Astrophys.]
+  {10.1051/0004-6361:20020274}, 386, 784
+
+\bibitem[\protect\citeauthoryear{Menard, Scranton, Fukugita  \&
+  Richards}{Menard et~al.}{2010}]{Menard:2009yb}
+Menard B.,  Scranton R.,  Fukugita M.,   Richards G.,  2010, \mn@doi [Mon. Not.
+  Roy. Astron. Soc.] {10.1111/j.1365-2966.2010.16486.x}, 405, 1025
+
+\bibitem[\protect\citeauthoryear{{Newburgh} et~al.,}{{Newburgh}
+  et~al.}{2016}]{2016SPIE.9906E..5XN}
+{Newburgh} L.~B.,  et~al., 2016, in Ground-based and Airborne Telescopes VI. p.
+  99065X (\mn@eprint {arXiv} {1607.02059}), \mn@doi{10.1117/12.2234286}
+
+\bibitem[\protect\citeauthoryear{{Santos} et~al.,}{{Santos}
+  et~al.}{2015}]{2015aska.confE..19S}
+{Santos} M.,  et~al., 2015, Advancing Astrophysics with the Square Kilometre
+  Array (AASKA14), \href {http://adsabs.harvard.edu/abs/2015aska.confE..19S}
+  {p.~19}
+
+\bibitem[\protect\citeauthoryear{{Santos} et~al.,}{{Santos}
+  et~al.}{2017}]{2017arXiv170906099S}
+{Santos} M.~G.,  et~al., 2017, preprint, \href
+  {http://adsabs.harvard.edu/abs/2017arXiv170906099S} {} (\mn@eprint {arXiv}
+  {1709.06099})
+
+\bibitem[\protect\citeauthoryear{{Schechter}}{{Schechter}}{1976}]{1976ApJ...203..297S}
+{Schechter} P.,  1976, \mn@doi [\apj] {10.1086/154079}, \href
+  {https://ui.adsabs.harvard.edu/abs/1976ApJ...203..297S} {203, 297}
+
+\bibitem[\protect\citeauthoryear{{Scranton} et~al.,}{{Scranton}
+  et~al.}{2005}]{2005ApJ...633..589S}
+{Scranton} R.,  et~al., 2005, \mn@doi [\apj] {10.1086/431358}, \href
+  {https://ui.adsabs.harvard.edu/#abs/2005ApJ...633..589S} {633, 589}
+
+\bibitem[\protect\citeauthoryear{Smith et~al.,}{Smith
+  et~al.}{2003}]{Smith:2002dz}
+Smith R.~E.,  et~al., 2003, \mn@doi [Mon. Not. Roy. Astron. Soc.]
+  {10.1046/j.1365-8711.2003.06503.x}, 341, 1311
+
+\bibitem[\protect\citeauthoryear{Takahashi, Sato, Nishimichi, Taruya  \&
+  Oguri}{Takahashi et~al.}{2012}]{Takahashi:2012em}
+Takahashi R.,  Sato M.,  Nishimichi T.,  Taruya A.,   Oguri M.,  2012, \mn@doi
+  [Astrophys. J.] {10.1088/0004-637X/761/2/152}, 761, 152
+
+\bibitem[\protect\citeauthoryear{{Taylor}, {Kitching}, {Bacon}  \&
+  {Heavens}}{{Taylor} et~al.}{2007}]{2007MNRAS.374.1377T}
+{Taylor} A.~N.,  {Kitching} T.~D.,  {Bacon} D.~J.,   {Heavens} A.~F.,  2007,
+  \mn@doi [\mnras] {10.1111/j.1365-2966.2006.11257.x}, \href
+  {https://ui.adsabs.harvard.edu/\#abs/2007MNRAS.374.1377T} {374, 1377}
+
+\bibitem[\protect\citeauthoryear{Van~Waerbeke, Hildebrandt, Ford  \&
+  Milkeraitis}{Van~Waerbeke et~al.}{2010}]{VanWaerbeke:2010yp}
+Van~Waerbeke L.,  Hildebrandt H.,  Ford J.,   Milkeraitis M.,  2010, \mn@doi
+  [Astrophys. J.] {10.1088/2041-8205/723/1/L13}, 723, L13
+
+\bibitem[\protect\citeauthoryear{Wittman, Tyson, Kirkman, Dell'Antonio  \&
+  Bernstein}{Wittman et~al.}{2000}]{Wittman:2000tc}
+Wittman D.~M.,  Tyson J.~A.,  Kirkman D.,  Dell'Antonio I.,   Bernstein G.,
+  2000, \mn@doi [Nature] {10.1038/35012001}, 405, 143
+
+\bibitem[\protect\citeauthoryear{Witzemann, Alonso, Fonseca  \&
+  Santos}{Witzemann et~al.}{2019}]{Witzemann:2018cdx}
+Witzemann A.,  Alonso D.,  Fonseca J.,   Santos M.~G.,  2019, \mn@doi [Mon.
+  Not. Roy. Astron. Soc.] {10.1093/mnras/stz778}, 485, 5519
+
+\bibitem[\protect\citeauthoryear{Yang \& Zhang}{Yang \&
+  Zhang}{2011}]{Yang:2011gj}
+Yang X.,  Zhang P.,  2011, \mn@doi [Mon. Not. Roy. Astron. Soc.]
+  {10.1111/j.1745-3933.2011.01075.x}, 415, L45
+
+\bibitem[\protect\citeauthoryear{{Zhang} \& {Pen}}{{Zhang} \&
+  {Pen}}{2006}]{2006MNRAS.367..169Z}
+{Zhang} P.,  {Pen} U.-L.,  2006, \mn@doi [\mnras]
+  {10.1111/j.1365-2966.2006.09971.x}, \href
+  {https://ui.adsabs.harvard.edu/\#abs/2006MNRAS.367..169Z} {367, 169}
+
+\bibitem[\protect\citeauthoryear{{Ziour} \& {Hui}}{{Ziour} \&
+  {Hui}}{2008}]{2008PhRvD..78l3517Z}
+{Ziour} R.,  {Hui} L.,  2008, \mn@doi [\prd] {10.1103/PhysRevD.78.123517},
+  \href {https://ui.adsabs.harvard.edu/#abs/2008PhRvD..78l3517Z} {78, 123517}
+
+\bibitem[\protect\citeauthoryear{van Uitert et~al.}{van Uitert
+  et~al.}{2018}]{vanUitert:2017ieu}
+van Uitert E.,  et~al., 2018, \mn@doi [Mon. Not. Roy. Astron. Soc.]
+  {10.1093/mnras/sty551}, 476, 4662
+
+\bibitem[\protect\citeauthoryear{van Waerbeke et~al.}{van Waerbeke
+  et~al.}{2000}]{vanWaerbeke:2000rm}
+van Waerbeke L.,  et~al., 2000, Astron. Astrophys., 358, 30
+
+\makeatother
+\end{thebibliography}

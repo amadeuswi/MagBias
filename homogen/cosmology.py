@@ -9,16 +9,19 @@ basic = { #parameters shared by all cosmologies
     }
 
 std = {
-    'omega_M_0':        0.316,
-    'omega_lambda_0':   0.684,
-    'omega_b_0':        0.049,
+    # 'omega_M_0':        0.316,
+    # 'omega_lambda_0':   0.684,
+    'omega_b_0':        0.048,
+    'omega_c_0':        0.259,
+    'omega_M_0':        0.259+0.048,
+    'omega_lambda_0':   1-0.259-0.048,
     'omega_HI_0':       4.86e-4, #6.50e-4,
     'omega_k':          0.0,
     'omega_r_0':        9.1263e-05, # follows from CMB temperature of 2.725K + neutrinos
     'N_eff':            3.046,
-    'h':                0.67,
-    'H_0':              0.67*1e5,
-    'ns':               0.962,
+    'h':                0.678,
+    'H_0':              0.678*1e5,
+    'ns':               0.968,
     'sigma_8':          0.834,
     'gamma':            0.55,
     'w0':               -1.,
