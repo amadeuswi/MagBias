@@ -309,13 +309,20 @@ def g_old(z, zb, dzb, mstar, NINT = 10000): #first we try trapz, later something
 
 
 
-def g(z, zbmin, mstar, NINT = 10000, experiment = LSST): #first we try trapz, later something better
+def g(z, zbmin, mstar, NINT = 10000, experiment = LSST, ZMAX = False): #first we try trapz, later something better
     """compare with handwritten entry in notebook 2 from 14/12/2018"""
 
     if type(mstar) == bool:
         raise ValueError("Need mstar to be given!")
     zmin = zbmin
-    zmax = zbg_max(mstar, experiment)
+
+    if type(ZMAX) == bool and not ZMAX:
+        zmax = zbg_max(mstar, experiment)
+    elif type(ZMAX) == bool and ZMAX:
+        raise ValueError("ZMAX must be either False or float")
+    else:
+        zmax = ZMAX
+
     z = np.atleast_1d(z)
     if (z>zmin).any():
         raise ValueError("foreground z must not lie within the background")
@@ -388,7 +395,7 @@ def dummy_T(z): #returns 1, for non-temperature power spectra
         return 1
     return np.ones(z.shape)
 
-def Cl_HIxmag_CAMB(ltable, zf, delta_zf, zbmin, Nint = 500, MAXMAG = False, NOUNITS = False):
+def Cl_HIxmag_CAMB(ltable, zf, delta_zf, zbmin, Nint = 500, NINT_gkernel = 10000, MAXMAG = False, NOUNITS = False, ZMAX = False):
     """ltable, zf foreground redshift, zb background redshift,
     delta_zf foreground redshift widht, Nint integration steps"""
 
@@ -412,7 +419,7 @@ def Cl_HIxmag_CAMB(ltable, zf, delta_zf, zbmin, Nint = 500, MAXMAG = False, NOUN
         pknltab = np.array([pknl(( ell+1/2)/rCom(zzz), zzz) for zzz in ztab])
         # integrand[:,il] = (1+ztab) * bHI(ztab) * T_obs(ztab) * W_tophat(ztab, zmin, zmax) * g(ztab, zb, delta_zb, S_G = S_G) \
         # / rCom(ztab)**2 * pknltab
-        integrand[:,il] = (1+ztab) * bfunc(ztab) * T_func(ztab) * W_tophat(ztab, zmin, zmax) * g(ztab, zbmin, MAXMAG) \
+        integrand[:,il] = (1+ztab) * bfunc(ztab) * T_func(ztab) * W_tophat(ztab, zmin, zmax) * g(ztab, zbmin, MAXMAG, ZMAX = ZMAX, NINT = NINT_gkernel) \
         / rCom(ztab)**2 * pknltab
 
         #old and slow ways to calculate the same thing:
@@ -554,11 +561,16 @@ def C_l_gg_CAMB(ltable,zmin, mstar, Nint = 500, experiment = LSST):
     return result
 
 
-def C_l_DM_CAMB(ltable,zmin, galsurv = LSST, Nint = 500, NOUNITS = False, maxmag = 27):
+def C_l_DM_CAMB(ltable,zmin, galsurv = LSST, Nint = 500, NOUNITS = False, maxmag = 27, ZMAX = False):
     """Dark Matter background power spectrum, same as Cl_HIHI but without bias and T_21.
     arguments: ell array, zmin, zmax
     returns: Cl as array"""
-    zmax = zbg_max(maxmag, galsurv)
+    if type(ZMAX) == bool and not ZMAX:
+        zmax = zbg_max(maxmag, galsurv)
+    elif type(ZMAX) == bool and ZMAX:
+        raise ValueError("ZMAX must be either False or float")
+    else:
+        zmax = ZMAX
     ztable = np.linspace(zmin, zmax, Nint)
     integrand=np.zeros([len(ztable),len(ltable)])
     for l in range(len(ltable)):
@@ -1278,9 +1290,14 @@ def zbg_max(mstar, experiment, THRESHOLD = 1e-12, NNUM = 2000, INTERP = True):
 
 
 
-def shotnoise(zmin, galsurv, MAXMAG, NINT = 2000):
+def shotnoise(zmin, galsurv, MAXMAG, NINT = 2000, ZMAX = False):
 
-    zmax = zbg_max(MAXMAG, galsurv)
+    if type(ZMAX)==bool and not ZMAX:
+        zmax = zbg_max(MAXMAG, galsurv)
+    elif type(ZMAX)==bool and ZMAX:
+        raise ValueError("ZMAX must either be False or float")
+    else:
+        zmax = ZMAX
     if zmin>zmax:
         raise ValueError("zmin bigger than zmax...")
     z_integrate = np.linspace(zmin,zmax, NINT)
