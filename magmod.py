@@ -213,7 +213,6 @@ def g_old(z, zb, dzb, NINT = 10000, S_G = "old fit", MAXMAG = False): #does not 
 
 
 def g_tophat(z, zb, dzb, NINT = 10000, S_G = "LSST", MAXMAG = False): #new standard to use cumtrapz, also with sg inside the integration
-# def g(z, zb, dzb, NINT = 500, S_G = "LSST"): ############TEST:QUICKER INTEGRATION#############new standard to use cumtrapz, also with sg inside the integration
     """compare to my (handwritten) notebook 2 entry for 9/3/18
     zb is background redshift"""
 
@@ -309,6 +308,28 @@ def g_old(z, zb, dzb, mstar, NINT = 10000): #first we try trapz, later something
 
 
 
+def sgng_interp(z, MAXMAG = False, experiment = LSST):#this is an interpolated version of the (5sg-2)ng, to speed things up!
+    z = np.atleast_1d(z)
+    if type(MAXMAG) == bool and MAXMAG == False:
+        mmax = LSST['rmax']
+    else:
+        mmax = MAXMAG
+    res = sgng_interpolation_func(z,mmax).T
+    # if type(z) == np.ndarray and z[-1]<z[0]: #in this case z is an array running from big to small
+    #     return res[::-1] #I do not understand exactly why I the interp function needs to be turned around in this case, but it seem like it!
+    return res
+
+def dndz_norm(zmin, zmax, mstar, FIT = True):
+    """gets the normalization such that dndz integrates to one between zmin and zmax"""
+    ztab = np.linspace(zmin,zmax, 1000)
+    if FIT:
+        dnndz = dndz_fit(ztab, mstar)
+    else:
+        dnndz = nofz(ztab, mstar)
+    return np.trapz(dnndz, ztab)
+
+
+
 def g(z, zbmin, mstar, NINT = 10000, experiment = LSST, ZMAX = False): #first we try trapz, later something better
     """compare with handwritten entry in notebook 2 from 14/12/2018"""
 
@@ -394,6 +415,7 @@ def dummy_T(z): #returns 1, for non-temperature power spectra
     if len(z) ==1:
         return 1
     return np.ones(z.shape)
+
 
 def Cl_HIxmag_CAMB(ltable, zf, delta_zf, zbmin, Nint = 500, NINT_gkernel = 10000, MAXMAG = False, NOUNITS = False, ZMAX = False):
     """ltable, zf foreground redshift, zb background redshift,
@@ -851,16 +873,7 @@ def sg(z, experiment = LSST, MAXMAG = False):#, force_calc = False):
         return res[0]
     return np.array(res)
 
-def sgng_interp(z, MAXMAG = False, experiment = LSST):#this is an interpolated version of the (5sg-2)ng, to speed things up!
-    z = np.atleast_1d(z)
-    if type(MAXMAG) == bool and MAXMAG == False:
-        mmax = LSST['rmax']
-    else:
-        mmax = MAXMAG
-    res = sgng_interpolation_func(z,mmax).T
-    # if type(z) == np.ndarray and z[-1]<z[0]: #in this case z is an array running from big to small
-    #     return res[::-1] #I do not understand exactly why I the interp function needs to be turned around in this case, but it seem like it!
-    return res
+
 
 
 
@@ -1344,14 +1357,6 @@ def dndz_fit(z, mstar): # fits nofz! mstar must be float, not array
     aa, zzstar, alal, betbet = powexp_allparams(mstar)
     return powexp(z, aa, zzstar, alal, betbet)
 
-def dndz_norm(zmin, zmax, mstar, FIT = True):
-    """gets the normalization such that dndz integrates to one between zmin and zmax"""
-    ztab = np.linspace(zmin,zmax, 1000)
-    if FIT:
-        dnndz = dndz_fit(ztab, mstar)
-    else:
-        dnndz = nofz(ztab, mstar)
-    return np.trapz(dnndz, ztab)
 
 def W_dndz(z, zmin, zmax, mstar, FIT = False):
     z = np.atleast_1d(z)
@@ -1447,3 +1452,70 @@ def S2N_for_opt(mmag, ltabbb, zfmin, zfmax, zbmin, SURVEY, P_FUNC_LIST, D_ELL = 
     if zbmin >= zbg_max(mmag, SURVEY[1]): #background bin does not extend far enough
         return 0.
     return -S2N_of_mstar_and_zf(mmag, ltabbb, zfmin, zfmax, zbmin, SURVEY = [SKA, LSST],P_FUNC_LIST = [C_l_HIHI_CAMB, C_l_gg_CAMB, Cl_HIxmag_CAMB], D_ELL = D_ELL)[0]
+
+# def sgng_ones(z, MAXMAG = False, experiment = LSST):
+#     shap = sgng_interp(z, MAXMAG = MAXMAG, experiment = experiment).shape
+#     return np.ones(shap)
+#
+# def dndz_ones(zmin, zmax, mstar, FIT = True):
+#     shap = dndz_norm(zmin, zmax, mstar, FIT = FIT).shape
+#     return np.ones(shap)
+
+def g_ziourhui(z, zbmin, mstar, NINT = 10000, experiment = LSST, ZMAX = False):
+    """g as defined in ziour&hui (0809.3101), which lacks the ng/Ng*(5sg-2) factor with respect to our g. It needs the same arguments as g, even in they are not needed (to prevent code from breaking).
+    """
+    #return our g but with nofz instead of (5sg-2)*nofz
+    if type(mstar) == bool:
+        raise ValueError("Need mstar to be given!")
+    zmin = zbmin
+
+    if type(ZMAX) == bool and not ZMAX:
+        zmax = zbg_max(mstar, experiment)
+    elif type(ZMAX) == bool and ZMAX:
+        raise ValueError("ZMAX must be either False or float")
+    else:
+        zmax = ZMAX
+
+    z = np.atleast_1d(z)
+    if (z>zmin).any():
+        raise ValueError("foreground z must not lie within the background")
+
+    zint = np.linspace(zmin, zmax, NINT)
+
+
+    fac1 = dndz_fit(zint, mstar)
+    # fac1 = 1
+    norm = 1 / dndz_norm(zmin, zmax, mstar)
+    # norm = 1 / (zint[-1]-zint[0])
+
+    fac3 = 1/rCom(zint)
+
+    # integral1 = np.trapz(fac1, zint)
+    integral = np.trapz(fac1*fac3,zint) * norm
+
+    rcomtab = rCom(z)
+    return rcomtab - rcomtab**2 * integral
+    # return fac2 * (rcomtab * integral1 - rcomtab**2 * integral2)
+
+
+def Cl_kappa_HI_CAMB(ltable, zf, delta_zf, zbmin, Nint = 500, NINT_gkernel = 10000, MAXMAG = False, NOUNITS = True, ZMAX = False):
+    """ltable, zf foreground redshift, zb background redshift,
+    delta_zf foreground redshift widht, Nint integration steps"""
+
+    #   NOW NEW: INCLUDING T_OBS AS WE SHOULD
+    fac = 3/2 *(H_0/c)**2 * Omega_m #no square on (H_0/c) because it cancels out
+    zmin = zf - delta_zf/2
+    zmax = zf + delta_zf/2
+    ztab = np.linspace(zmin, zmax, Nint) #do checks on this! should be 0 to inf
+    bfunc = bHI
+
+    integrand=np.zeros([len(ztab),len(ltable)])
+    for il in range(len(ltable)):
+        ell = ltable[il]
+        pknltab = np.array([pknl(( ell+1/2)/rCom(zzz), zzz) for zzz in ztab])
+
+        integrand[:,il] = (1+ztab) * bfunc(ztab) * Tb_redbook(ztab) * W_tophat(ztab, zmin, zmax) * g_ziourhui(ztab, zbmin, MAXMAG, ZMAX = ZMAX, NINT = NINT_gkernel) \
+        / rCom(ztab)**2 * pknltab
+
+    result= fac * np.trapz(integrand,ztab,axis=0)
+    return result
