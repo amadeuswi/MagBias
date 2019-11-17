@@ -157,7 +157,7 @@ def lumfun_mag(mr,z,typ) :
 def lumfun(lnlum,z,typ) :
     """LF as a function of ln(L_r)"""
     if type(z) != float and type(z) != np.float64:
-        print "z is wrong: {}".format(type(z))
+        print("z is wrong: {}".format(type(z)))
         raise ValueError
     if z==0 :
         return 0

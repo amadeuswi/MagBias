@@ -43,9 +43,9 @@ def set_cosmology(cosmostring="standard"):
         omega_r=cosm['omega_r_0']
         a_eq=omega_r/omega_m
     else:
-        print "*"*50
-        print "a_eq and omega_r not set!"
-        print "*"*50
+        print("*"*50)
+        print("a_eq and omega_r not set!")
+        print("*"*50)
     #defining H_0 in m/s/Mpc:
     h=cosm['h']
     H_0=100*cosm['h']
@@ -109,7 +109,7 @@ def set_apiv():
     maxind=cond0*cond1*cond2*cond3
     apiv=aa[maxind]#plus two because length lost in finding derivative
     if len(np.where(maxind==True)[0])>1:
-        print "set_apiv: more than one pivot a!"
+        print("set_apiv: more than one pivot a!")
     Epiv=Evec[maxind]
     if len(apiv)<1:
         apiv='None'
@@ -153,8 +153,8 @@ def timeintegrand(a,years=False):
 def time_maxscale(avec,aaaend):
     aend=np.copy(np.atleast_1d(aaaend))
     if apiv=='None':
-        print "no maximal scale factor"
-        return 'None'
+        print("no maximal scale factor")
+        return('None')
     newaend=aend[aend<apiv]
     Evec1=E_a(newaend)
     argument=1/newaend/H_0_per_second/Evec1

@@ -185,7 +185,7 @@ def g_old(z, zb, dzb, NINT = 10000, S_G = "old fit", MAXMAG = False): #does not 
         raise ValueError
     if MAXMAG != False:
         raise ValueError
-    print "using old lensing kernel"
+    print("using old lensing kernel")
     zmin = zb - dzb
     zmax = zb + dzb
     z = np.atleast_1d(z)
@@ -635,7 +635,7 @@ def DELTA_Cl_HIxmag_old(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = "
             Cshot = shotnoise(zb, dzb, SURVEY[1], MAXMAG = MAXMAG);
         elif type(SURVEY)==dict:
             hisurv = SURVEY
-            print "We assume a perfect galaxy survey!"
+            print("We assume a perfect galaxy survey!")
             Cshot = np.zeros(len(ltable));
         else: raise ValueError("wrong SURVEY")
         fsky = hisurv["S_area"] / (4*np.pi);
@@ -695,15 +695,15 @@ def DELTA_Cl_HIxmag(ltable, zf, dzf, zbmin, power_spectra_list, SURVEY = "CV", M
             Cshot = shotnoise(zbmin, SURVEY[1], MAXMAG = MAXMAG);
         elif type(SURVEY)==dict:
             hisurv = SURVEY
-            print "We assume a perfect galaxy survey!"
+            print("We assume a perfect galaxy survey!")
             Cshot = np.zeros(len(ltable));
         else: raise ValueError("wrong SURVEY")
         fsky = hisurv["S_area"] / (4*np.pi);
         if hisurv["mode"] == "interferometer":
-            print "calculating interferometer noise..."
+            print("calculating interferometer noise...")
             N_ell = Cl_interferom_noise(ltable, zfmin, zfmax, hisurv)
         elif hisurv["mode"] == "single_dish":
-            print "calculating single dish autocorrelation noise"
+            print("calculating single dish autocorrelation noise")
             N_ell = noise_cls_single_dish(ltable, ztonu21(zf), hisurv, nside) * np.ones( len(ltable) )
             # ell_noise = np.copy(ltable)
         else:
@@ -884,7 +884,7 @@ def sg_old(z, experiment = CLAR_zhangpen, USE_ALPHA = False, MAXMAG = False): #n
     if USE_ALPHA:
         return 2/5*alpha(z, experiment)
     else:
-        print "Caution, s_g is implemented without dependence on the experiment"
+        print("Caution, s_g is implemented without dependence on the experiment")
         n0 = 0.132
         n1 = 0.259
         n2 = -0.281
@@ -1252,7 +1252,7 @@ nztab_file *= 60**2 * 41200 #in arcmin
 Nz_func = np.trapz(nztab_func, zint)
 Nz_file = np.trapz(nztab_file, zint)
 rescale = Nz_file/Nz_func
-print "\n", "#$"*30, "\n", "Rescaling the galaxy number density by a factor of {} to match the gold sample with {} total galaxies".format(rescale, Nz_file), "\n", "#$"*30, "\n"
+print("\n", "#$"*30, "\n", "Rescaling the galaxy number density by a factor of {} to match the gold sample with {} total galaxies".format(rescale, Nz_file), "\n", "#$"*30, "\n")
 
 
 
