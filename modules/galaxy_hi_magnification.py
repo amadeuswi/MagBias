@@ -6,16 +6,10 @@ class GalaxyHIMagnification:
 
     NINT = 5  # coarse because we have fine bins
 
-    def __init__(self, galaxy_hi_experiment):
+    def __init__(self, galaxy_hi_experiment, unityweight = False):
         self.experiment = galaxy_hi_experiment
-        # self.n_gal_in_mag_bins = self._get_n_gal_in_mag_bins()
-        # self.alpha_minus_one_tab = self._get_alpha_minus_one_tab()
-        # self.weight = self._get_W_weight()
-        # self.set_n_gal()
+        self.unityweight = unityweight
         self.set_alpha()
-
-    # def set_n_gal(self):
-    #     self.n_gal_in_mag_bins = self._get_n_gal_in_mag_bins()
 
     def set_alpha(self):
         self.alpha_minus_one = self._get_alpha_minus_one_tab()
@@ -50,21 +44,21 @@ class GalaxyHIMagnification:
         return res
 
     def get_alpha_minus_one_in_fg_bin(self, idx):
-        return self.alpha_minus_one[:, iz]
+        return self.alpha_minus_one[:, idx]
 
-    def get_W_weight(self, foreground_bin_idx, unityweight=False):
+    def get_W_weight(self, foreground_bin_idx):
         """
         the weight proposed by menard & bartelmann.
         """
         res = self.alpha_minus_one[:, foreground_bin_idx] + \
             np.zeros((self.experiment.n_ell, 1))
-        if unityweight:
+        if self.unityweight:
             print("Warning! weight is set to 1")
             return np.ones(res.shape)
 
         return res
 
-    def get_S2N_weighted(self, CHImu, CSbg, CDM, biasg, Weight, Ngal, alphaminus1):
+    def _get_S2N_weighted(self, CHImu, CSbg, CDM, biasg, Weight, Ngal, alphaminus1):
         #     num = (2*ltab + 1) * deltaell * fsky
         Cfg = self.get_C_HIHI()
         CSfg = self.experiment.radio_noise
@@ -119,6 +113,57 @@ class GalaxyHIMagnification:
             )
             for mmm in self.experiment.magnitude_bin_edges[1:]]).T  # transpose to match shape
 
+    def get_S2N_weighted_in_bg_bin(self, iz):
+        zlow = self.experiment.galaxy_redshift_tab[iz]
+        zhigh = self.experiment.galaxy_redshift_tab[iz+1]
+        zbmean = (zlow + zhigh)/2
+
+        N_g_tab = self._get_n_gal_in_mag_bins(zlow, zhigh)
+        # less than one galaxy is the same as no galaxy...
+        N_g_tab[N_g_tab < self.experiment.config_class.N_g_threshold] = 0.
+
+        alphaminusone_tab = self.get_alpha_minus_one_in_fg_bin(iz)
+        # exact value doesn't matter, it's multiplied with 0!
+        alphaminusone_tab[N_g_tab <
+                            self.experiment.config_class.N_g_threshold] = 1.
+
+        bias_g_tab = self.get_galaxy_bias(zbmean)
+        # exact value doesn't matter, it's multiplied with 0!
+        bias_g_tab[N_g_tab < self.experiment.config_class.N_g_threshold] = 1.
+
+        C_DM_tab = self.get_C_DM(zlow, zhigh)
+        Cshot = self.experiment.get_shot_noise(zlow, zhigh)
+        C_HIxmag_tab = self.get_C_HIxmag(zlow, zhigh)
+
+        Weight = self.get_W_weight(iz)
+
+        return self._get_S2N_weighted(
+            C_HIxmag_tab,
+            Cshot,
+            C_DM_tab,
+            bias_g_tab,
+            Weight,
+            N_g_tab,
+            alphaminusone_tab
+        )
+
+    def get_S2N_weighted(self):
+        S2Ntab = np.array([
+            self.get_S2N_weighted_in_bg_bin(iz) for iz in range(len(self.experiment.galaxy_redshift_tab)-1)
+            ])
+        # for iz in :  # all but the last entry
+        #     S2Ntmp = 
+        #     S2Ntab.append(S2Ntmp)
+        #     if np.isnan(S2Ntmp):
+        #         break #no more S2N to get
+        #     if iz ==0:
+        #         print(S2Ntmp, "S2Ntmp")
+        # S2Ntab = np.array(S2Ntab)
+        #now squared summation over the background z bins:
+        S2Nsqsum = np.sqrt(np.nansum(S2Ntab**2))
+        return S2Nsqsum
+
+
     @staticmethod
     def average(A, B, N, VECTORINPUT=False):
         """A,B are the arrays to be averaged, same length as N which is the bg number density of galaxies"""
@@ -131,7 +176,7 @@ class GalaxyHIMagnification:
 
 
 if __name__ == '__main__':
-    from magbias_experiments import hirax, SKA, LSST
+    from magbias_experiments import cb_hirax as hirax, SKA, LSST
     from modules.galaxy_hi_experiment import GalaxyHIExperiment
 
     redshift = (0.7755075, 1.2755075)
@@ -143,41 +188,4 @@ if __name__ == '__main__':
     print("z from {} to {}".format(
         mag1.experiment.lower_redshift, mag1.experiment.upper_redshift))
 
-    # C_HIHI_tab = mag1.get_C_HIHI()
-
-    for iz in range(len(mag1.experiment.galaxy_redshift_tab)-1):  # all but the last entry
-        if iz != 0:
-            continue
-        zlow = mag1.experiment.galaxy_redshift_tab[iz]
-        zhigh = mag1.experiment.galaxy_redshift_tab[iz+1]
-        zbmean = (zlow + zhigh)/2
-
-        N_g_tab = mag1._get_n_gal_in_mag_bins(zlow, zhigh)
-        # less than one galaxy is the same as no galaxy...
-        N_g_tab[N_g_tab < mag1.experiment.config_class.N_g_threshold] = 0.
-
-        alphaminusone_tab = mag1.get_alpha_minus_one_in_fg_bin(iz)
-        # exact value doesn't matter, it's multiplied with 0!
-        alphaminusone_tab[N_g_tab <
-                          mag1.experiment.config_class.N_g_threshold] = 1.
-
-        bias_g_tab = mag1.get_galaxy_bias(zbmean)
-        # exact value doesn't matter, it's multiplied with 0!
-        bias_g_tab[N_g_tab < mag1.experiment.config_class.N_g_threshold] = 1.
-
-        C_DM_tab = mag1.get_C_DM(zlow, zhigh)
-        Cshot = mag1.experiment.get_shot_noise(zlow, zhigh)
-        C_HIxmag_tab = mag1.get_C_HIxmag(zlow, zhigh)
-
-        Weight = mag1.get_W_weight(iz)
-
-        S2Ntmp = mag1.get_S2N_weighted(
-            C_HIxmag_tab,
-            Cshot,
-            C_DM_tab,
-            bias_g_tab,
-            Weight,
-            N_g_tab,
-            alphaminusone_tab
-        )
-
+    print("S2N in this bin: {}".format(mag1.get_S2N_weighted()))
