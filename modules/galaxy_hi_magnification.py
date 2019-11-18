@@ -6,7 +6,7 @@ class GalaxyHIMagnification:
 
     NINT = 5  # coarse because we have fine bins
 
-    def __init__(self, galaxy_hi_experiment, unityweight = False):
+    def __init__(self, galaxy_hi_experiment, unityweight=False):
         self.experiment = galaxy_hi_experiment
         self.unityweight = unityweight
         self.set_alpha()
@@ -40,15 +40,15 @@ class GalaxyHIMagnification:
             self.experiment.galaxy_redshift_step/2
         maxmag = self.experiment.magnitude_bin_edges[1:]
         res = np.array([(5*sg(z, exp, mmm) - 2)/2 for mmm in maxmag])
-        # res[self.n_gal_in_mag_bins < self.experiment.config_class.N_g_threshold,:] = 1.  # exact value doesn't matter, it's multiplied with 0!
         return res
 
-    def get_alpha_minus_one_in_fg_bin(self, idx):
+    def get_alpha_minus_one_in_bg_bin(self, idx):
+        """``idx`` is the background bin index."""
         return self.alpha_minus_one[:, idx]
 
     def get_W_weight(self, foreground_bin_idx):
         """
-        the weight proposed by menard & bartelmann.
+        the weight proposed by menard & bartelmann, unless ``unityweight == True``, then the weight is one.
         """
         res = self.alpha_minus_one[:, foreground_bin_idx] + \
             np.zeros((self.experiment.n_ell, 1))
@@ -59,7 +59,7 @@ class GalaxyHIMagnification:
         return res
 
     def _get_S2N_weighted(self, CHImu, CSbg, CDM, biasg, Weight, Ngal, alphaminus1):
-        #     num = (2*ltab + 1) * deltaell * fsky
+        """S2N of magnification bias"""
         Cfg = self.get_C_HIHI()
         CSfg = self.experiment.radio_noise
         ltab = self.experiment.ell_tab
@@ -84,12 +84,14 @@ class GalaxyHIMagnification:
         return bias_g_tab
 
     def get_C_DM(self, z_lower, z_upper):
+        """DM background power spectrum from CAMB."""
         return C_l_DM_CAMB(
             self.experiment.ell_tab, z_lower,
             galsurv=self.experiment.galaxy_instrument,
             ZMAX=z_upper)
 
     def get_C_HIHI(self):
+        """HI-HI autocorrelation power spectrum based on CAMB."""
         return C_l_HIHI_CAMB(
             self.experiment.ell_tab,
             self.experiment.lower_redshift,
@@ -97,6 +99,7 @@ class GalaxyHIMagnification:
         )
 
     def get_C_HIxmag(self, z_lower, z_upper):
+        """HI-magnification power spectrum based on CAMB"""
         zfmean = (self.experiment.lower_redshift +
                   self.experiment.upper_redshift)/2
         delta_zf = (self.experiment.upper_redshift -
@@ -114,6 +117,7 @@ class GalaxyHIMagnification:
             for mmm in self.experiment.magnitude_bin_edges[1:]]).T  # transpose to match shape
 
     def get_S2N_weighted_in_bg_bin(self, iz):
+        """Calculates the S2N for a magnification bias measurement in background bin number ``iz``."""
         zlow = self.experiment.galaxy_redshift_tab[iz]
         zhigh = self.experiment.galaxy_redshift_tab[iz+1]
         zbmean = (zlow + zhigh)/2
@@ -122,10 +126,10 @@ class GalaxyHIMagnification:
         # less than one galaxy is the same as no galaxy...
         N_g_tab[N_g_tab < self.experiment.config_class.N_g_threshold] = 0.
 
-        alphaminusone_tab = self.get_alpha_minus_one_in_fg_bin(iz)
+        alphaminusone_tab = self.get_alpha_minus_one_in_bg_bin(iz)
         # exact value doesn't matter, it's multiplied with 0!
         alphaminusone_tab[N_g_tab <
-                            self.experiment.config_class.N_g_threshold] = 1.
+                          self.experiment.config_class.N_g_threshold] = 1.
 
         bias_g_tab = self.get_galaxy_bias(zbmean)
         # exact value doesn't matter, it's multiplied with 0!
@@ -148,21 +152,12 @@ class GalaxyHIMagnification:
         )
 
     def get_S2N_weighted(self):
+        """Calculates the total S2N of magnification bias (squared summation over background redshift bins) of this bg-fg combination."""
         S2Ntab = np.array([
             self.get_S2N_weighted_in_bg_bin(iz) for iz in range(len(self.experiment.galaxy_redshift_tab)-1)
-            ])
-        # for iz in :  # all but the last entry
-        #     S2Ntmp = 
-        #     S2Ntab.append(S2Ntmp)
-        #     if np.isnan(S2Ntmp):
-        #         break #no more S2N to get
-        #     if iz ==0:
-        #         print(S2Ntmp, "S2Ntmp")
-        # S2Ntab = np.array(S2Ntab)
-        #now squared summation over the background z bins:
+        ])
         S2Nsqsum = np.sqrt(np.nansum(S2Ntab**2))
         return S2Nsqsum
-
 
     @staticmethod
     def average(A, B, N, VECTORINPUT=False):
@@ -176,16 +171,36 @@ class GalaxyHIMagnification:
 
 
 if __name__ == '__main__':
-    from magbias_experiments import cb_hirax as hirax, SKA, LSST
+    from magbias_experiments import cb_hirax as hirax, SKA1, SKA2, LSST
     from modules.galaxy_hi_experiment import GalaxyHIExperiment
 
-    redshift = (0.7755075, 1.2755075)
-    hirax1 = GalaxyHIExperiment(redshift, hirax, LSST)
-    mag1 = GalaxyHIMagnification(hirax1)
+    redshifts = [
+        (0.7755075, 1.2755075),  # hirax
+        (1.2755075, 1.7755075),
+        (1.7755075, 2.2755075),
+        (0.34127101, 0.84127101),  # SKA1
+        (0.84127101, 1.34127101),
+        (1.34127101, 1.84127101),
+        (1.84127101, 2.34127101),  
+        (0.0005, 0.47039959) # SKA2
+    ]
+    radio_experiments = [hirax]*3 + [SKA1]*4 + [SKA2]
+    fg_bin_labels = ["H1", "H2", "H3", "SKA11",
+                   "SKA12", "SKA13", "SKA14", "SKA21"]
 
-    print("delta_ell = {}, fsky = {}".format(
-        mag1.experiment.delta_ell, mag1.experiment.fsky))
-    print("z from {} to {}".format(
-        mag1.experiment.lower_redshift, mag1.experiment.upper_redshift))
+    for idx_fg_bin in range(len(redshifts)):
+        redshift = redshifts[idx_fg_bin]
+        radio_experiment = radio_experiments[idx_fg_bin]
 
-    print("S2N in this bin: {}".format(mag1.get_S2N_weighted()))
+        # print('working on redshift bin {}, z in {}'.format(fg_bin_labels[idx_fg_bin], redshift))
+        gXhi_experiment = GalaxyHIExperiment(redshift, radio_experiment, LSST)
+
+        gXhi_magnification = GalaxyHIMagnification(gXhi_experiment)
+
+        print("delta_ell = {}, fsky = {}".format(
+            gXhi_magnification.experiment.delta_ell, gXhi_magnification.experiment.fsky))
+        print("z from {} to {}".format(
+            gXhi_magnification.experiment.lower_redshift, gXhi_magnification.experiment.upper_redshift))
+
+        print("S2N in bin {}: {}".format(fg_bin_labels[idx_fg_bin], gXhi_magnification.get_S2N_weighted()))
+        print("-"*20)
