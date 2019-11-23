@@ -267,44 +267,44 @@ def sg5minus2(z, mstar):
 
 
 
-def g_old(z, zb, dzb, mstar, NINT = 10000): #first we try trapz, later something better
-    """compare with handwritten entry in notebook 2 from 14/12/2018"""
+# def g_old(z, zb, dzb, mstar, NINT = 10000): #first we try trapz, later something better
+#     """compare with handwritten entry in notebook 2 from 14/12/2018"""
 
-    if type(mstar) == bool:
-        raise ValueError("Need mstar to be given!")
-    zmin = zb - dzb
-    zmax = zb + dzb
-    z = np.atleast_1d(z)
-    if (z>zmin).any():
-        raise ValueError("foreground z must not lie within the background")
+#     if type(mstar) == bool:
+#         raise ValueError("Need mstar to be given!")
+#     zmin = zb - dzb
+#     zmax = zb + dzb
+#     z = np.atleast_1d(z)
+#     if (z>zmin).any():
+#         raise ValueError("foreground z must not lie within the background")
 
-    zint = np.linspace(zmin, zmax, NINT) #going reverse, multiply integral with -1
+#     zint = np.linspace(zmin, zmax, NINT) #going reverse, multiply integral with -1
 
-# trying the bottom approach, splitting up the integral
-    # fac1 = sg5minus2(zint, mstar)
-    # fac2 = W_dndz(zint, zmin, zmax, mstar)
+# # trying the bottom approach, splitting up the integral
+#     # fac1 = sg5minus2(zint, mstar)
+#     # fac2 = W_dndz(zint, zmin, zmax, mstar)
 
 
-    fac1 = sgng_interp(zint, mstar)
-    fac2 = 1 / dndz_norm(zmin, zmax, mstar)
+#     fac1 = sgng_interp(zint, mstar)
+#     fac2 = 1 / dndz_norm(zmin, zmax, mstar)
 
-    # fac1 = np.ones(zint.shape)
-    # fac2 = 1/(zmax-zmin)
-    # print "ALARM!! THIS IS A TEST"
+#     # fac1 = np.ones(zint.shape)
+#     # fac2 = 1/(zmax-zmin)
+#     # print "ALARM!! THIS IS A TEST"
 
-    # fac12 = fac1*fac2
-    fac3 = 1/rCom(zint)
+#     # fac12 = fac1*fac2
+#     fac3 = 1/rCom(zint)
 
-    # integral1 = np.trapz(fac12, zint)
-    # integral2 = np.trapz(fac12*fac3,zint)
+#     # integral1 = np.trapz(fac12, zint)
+#     # integral2 = np.trapz(fac12*fac3,zint)
 
-    integral1 = np.trapz(fac1, zint)
-    integral2 = np.trapz(fac1*fac3,zint)
+#     integral1 = np.trapz(fac1, zint)
+#     integral2 = np.trapz(fac1*fac3,zint)
 
-    rcomtab = rCom(z)
-    return fac2 * (rcomtab * integral1 - rcomtab**2 * integral2)
+#     rcomtab = rCom(z)
+#     return fac2 * (rcomtab * integral1 - rcomtab**2 * integral2)
 
-    # return rcomtab * integral1 - rcomtab**2 * integral2
+#     # return rcomtab * integral1 - rcomtab**2 * integral2
 
 
 
@@ -486,29 +486,29 @@ def Cl_HIxmag_CAMB_old(ltable, zf, delta_zf, zb, delta_zb, Nint = 500, MAXMAG = 
     result= fac * np.trapz(integrand,ztab,axis=0)
     return result
 
-def Cl_HIxmag_CAMB_old(ltable, zf, delta_zf, zb, delta_zb, Nint = 500):
-    """ltable, zf foreground redshift, zb background redshift,
-    delta_zf foreground redshift widht, Nint integration steps"""
+# def Cl_HIxmag_CAMB_old(ltable, zf, delta_zf, zb, delta_zb, Nint = 500):
+#     """ltable, zf foreground redshift, zb background redshift,
+#     delta_zf foreground redshift widht, Nint integration steps"""
 
 
-    #note there is no T_obs factor because we want to compare with galaxy case
-    fac1 = 3/2 *(H_0/c)**2 * Omega_m #no square on (H_0/c) because it cancels out
-    fac2 = 1 * (5*sg_old(zb) - 2) #we take sg out of the integral
+#     #note there is no T_obs factor because we want to compare with galaxy case
+#     fac1 = 3/2 *(H_0/c)**2 * Omega_m #no square on (H_0/c) because it cancels out
+#     fac2 = 1 * (5*sg_old(zb) - 2) #we take sg out of the integral
 
-    zmin = zf - delta_zf
-    zmax = zf + delta_zf
-    ztab = np.linspace(zmin, zmax, Nint) #do checks on this! should be 0 to inf
+#     zmin = zf - delta_zf
+#     zmax = zf + delta_zf
+#     ztab = np.linspace(zmin, zmax, Nint) #do checks on this! should be 0 to inf
 
-    integrand=np.zeros([len(ztab),len(ltable)])
-    for il in range(len(ltable)):
-        ell = ltable[il]
-        pknltab = np.array([pknl(( ell)/rCom(zzz), zzz) for zzz in ztab])
-        integrand[:,il] = (1+ztab) * W_tophat(ztab, zmin, zmax) * g_original(ztab, zb, delta_zb) \
-        / rCom(ztab)**2 * pknltab
+#     integrand=np.zeros([len(ztab),len(ltable)])
+#     for il in range(len(ltable)):
+#         ell = ltable[il]
+#         pknltab = np.array([pknl(( ell)/rCom(zzz), zzz) for zzz in ztab])
+#         integrand[:,il] = (1+ztab) * W_tophat(ztab, zmin, zmax) * g_original(ztab, zb, delta_zb) \
+#         / rCom(ztab)**2 * pknltab
 
 
-    result= fac1 * fac2 * np.trapz(integrand,ztab,axis=0)
-    return result
+#     result= fac1 * fac2 * np.trapz(integrand,ztab,axis=0)
+#     return result
 
 
 
@@ -611,7 +611,7 @@ def DELTA_Cl_HIxmag_old(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = "
 
 
     zfmin = zf - dzf/2; zfmax = zf+dzf/2
-    zbmin = zb-dzb; zbmax = zb+dzb
+    # zbmin = zb-dzb; zbmax = zb+dzb
     # ClHIHIfunc, Clggfunc, Cl_HIxmagfunc = power_spectra_list
     HIHI, gg, XX = power_spectra_list
     X2 = XX**2
@@ -625,20 +625,20 @@ def DELTA_Cl_HIxmag_old(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = "
     # d_ell = 1
     # print "we assume d_ell = 1"
     #perfect survey:
-    noisestart = clock()
+    # noisestart = clock()
     if type(SURVEY)==str and SURVEY == "CV":
-        Cshot = np.zeros(len(ltable)); N_ell = np.zeros(len(ltable));
-        fsky = 1;
+        Cshot = np.zeros(len(ltable)); N_ell = np.zeros(len(ltable))
+        fsky = 1
     else:
         if type(SURVEY) == list:
             hisurv = SURVEY[0]
-            Cshot = shotnoise(zb, dzb, SURVEY[1], MAXMAG = MAXMAG);
+            Cshot = shotnoise(zb, dzb, SURVEY[1], MAXMAG = MAXMAG)
         elif type(SURVEY)==dict:
             hisurv = SURVEY
             print("We assume a perfect galaxy survey!")
-            Cshot = np.zeros(len(ltable));
+            Cshot = np.zeros(len(ltable))
         else: raise ValueError("wrong SURVEY")
-        fsky = hisurv["S_area"] / (4*np.pi);
+        fsky = hisurv["S_area"] / (4*np.pi)
         if hisurv["mode"] == "interferometer":
             # print "calculating interferometer noise..."
             N_ell = Cl_interferom_noise(ltable, zfmin, zfmax, hisurv)
@@ -648,7 +648,7 @@ def DELTA_Cl_HIxmag_old(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = "
             # ell_noise = np.copy(ltable)
         else:
             raise ValueError("dict must contain key 'mode'")
-    start = clock()
+    # start = clock()
     # print "noise took {} s".format(start - noisestart)
     # X2 = Cl_HIxmagfunc(ltable, zf, dzf, zb, dzb)**2
     # HIHI = ClHIHIfunc(ltable, zfmin, zfmax)
@@ -685,20 +685,20 @@ def DELTA_Cl_HIxmag(ltable, zf, dzf, zbmin, power_spectra_list, SURVEY = "CV", M
     # d_ell = 1
     # print "we assume d_ell = 1"
     #perfect survey:
-    noisestart = clock()
+    # noisestart = clock()
     if type(SURVEY)==str and SURVEY == "CV":
-        Cshot = np.zeros(len(ltable)); N_ell = np.zeros(len(ltable));
-        fsky = 1;
+        Cshot = np.zeros(len(ltable)); N_ell = np.zeros(len(ltable))
+        fsky = 1
     else:
         if type(SURVEY) == list:
             hisurv = SURVEY[0]
-            Cshot = shotnoise(zbmin, SURVEY[1], MAXMAG = MAXMAG);
+            Cshot = shotnoise(zbmin, SURVEY[1], MAXMAG = MAXMAG)
         elif type(SURVEY)==dict:
             hisurv = SURVEY
             print("We assume a perfect galaxy survey!")
-            Cshot = np.zeros(len(ltable));
+            Cshot = np.zeros(len(ltable))
         else: raise ValueError("wrong SURVEY")
-        fsky = hisurv["S_area"] / (4*np.pi);
+        fsky = hisurv["S_area"] / (4*np.pi)
         if hisurv["mode"] == "interferometer":
             print("calculating interferometer noise...")
             N_ell = Cl_interferom_noise(ltable, zfmin, zfmax, hisurv)
@@ -708,7 +708,7 @@ def DELTA_Cl_HIxmag(ltable, zf, dzf, zbmin, power_spectra_list, SURVEY = "CV", M
             # ell_noise = np.copy(ltable)
         else:
             raise ValueError("dict must contain key 'mode'")
-    start = clock()
+    # start = clock()
     # print "noise took {} s".format(start - noisestart)
     # X2 = Cl_HIxmagfunc(ltable, zf, dzf, zb, dzb)**2
     # HIHI = ClHIHIfunc(ltable, zfmin, zfmax)
@@ -720,18 +720,18 @@ def DELTA_Cl_HIxmag(ltable, zf, dzf, zbmin, power_spectra_list, SURVEY = "CV", M
     result = np.sqrt(num/denom)
     return result
 
-def S2N_old(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = "CV", MAXMAG = False, D_ELL = False):
-    #temporarily forcing the use of MAXMAG if survey not CV:
-    if type(MAXMAG) == bool and MAXMAG == False:
-        raise ValueError("please use MAXMAG!")
-    start = clock()
-    delt = DELTA_Cl_HIxmag(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = SURVEY, MAXMAG = MAXMAG, D_ELL = D_ELL)
-    mid = clock();
-    # signal = power_spectra_list[2](ltable, zf, dzf, zb, dzb)
-    signal = power_spectra_list[2]
-    end = clock()
-    # print "delta took {}s and signal took {} s".format(mid-start, end-mid)
-    return signal/delt
+# def S2N_old(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = "CV", MAXMAG = False, D_ELL = False):
+#     #temporarily forcing the use of MAXMAG if survey not CV:
+#     if type(MAXMAG) == bool and MAXMAG == False:
+#         raise ValueError("please use MAXMAG!")
+#     # start = clock()
+#     delt = DELTA_Cl_HIxmag(ltable, zf, dzf, zb, dzb, power_spectra_list, SURVEY = SURVEY, MAXMAG = MAXMAG, D_ELL = D_ELL)
+#     # mid = clock();
+#     # signal = power_spectra_list[2](ltable, zf, dzf, zb, dzb)
+#     signal = power_spectra_list[2]
+#     # end = clock()
+#     # print "delta took {}s and signal took {} s".format(mid-start, end-mid)
+#     return signal/delt
 
 
 
@@ -739,12 +739,12 @@ def S2N(ltable, zf, dzf, zbmin, power_spectra_list, SURVEY = "CV", MAXMAG = Fals
     #temporarily forcing the use of MAXMAG if survey not CV:
     if type(MAXMAG) == bool and MAXMAG == False:
         raise ValueError("please use MAXMAG!")
-    start = clock()
+    # start = clock()
     delt = DELTA_Cl_HIxmag(ltable, zf, dzf, zbmin, power_spectra_list, SURVEY = SURVEY, MAXMAG = MAXMAG, D_ELL = D_ELL)
-    mid = clock();
+    # mid = clock();
     # signal = power_spectra_list[2](ltable, zf, dzf, zb, dzb)
     signal = power_spectra_list[2]
-    end = clock()
+    # end = clock()
     # print "delta took {}s and signal took {} s".format(mid-start, end-mid)
     return signal/delt
 
@@ -868,7 +868,7 @@ def sg(z, experiment = LSST, MAXMAG = False):#, force_calc = False):
     res = s_magbias(z, rmax_cut, "all")
 
     #remove the nans:
-    res[np.where(np.isnan(res))[0]] = 0
+    res[np.where(np.isnan(res))[0]] = np.inf
     if len(res)==1:
         return res[0]
     return np.array(res)
@@ -998,7 +998,7 @@ def dNdz(z, n, experiment, Nderiv = 1000, RETURN_PARTS = False):
     """derivative of abundance of 21cm emitting galaxies wrt z.
     for explanation of Fdelta look up N_HI"""
     z = np.atleast_1d(z)
-    F = n * Ssys(z, experiment)
+    # F = n * Ssys(z, experiment)
 
     solidangle = experiment["S_area"] * (pi/180)**2
 
@@ -1176,7 +1176,8 @@ def noise_P_interferometer2(ktab, nu, dnu, exp_dict): #copying the calculation i
     return num/denom * Bpar #[Mpc3 mK]
 
 def Cl_interferom_noise(ltable, zmin, zmax, exp_dict): #from mario's mail on May 29th 2018
-    numin = ztonu21(zmax); numax = ztonu21(zmin);
+    numin = ztonu21(zmax)
+    numax = ztonu21(zmin)
     nu = (numin+numax)/2
     dnu = (numax-numin)
     u = ltable / 2 / np.pi
@@ -1401,7 +1402,7 @@ def get_bg_bin_for_fgzmax(fzmax, bufferz = 0.1, bzmax = 3.9):
 
 def get_fg_bin_for_frequency_range(nutot, numax):
     numin = numax - nutot
-    nu = (numin + numax)/2
+    # nu = (numin + numax)/2
     zmax = nutoz21(numin)
     zmin = nutoz21(numax)
     zmin = np.amax((zmin, 1e-3))#zmin shouldn't be too small for the integration...
@@ -1409,28 +1410,28 @@ def get_fg_bin_for_frequency_range(nutot, numax):
     z = (zmin+zmax)/2
     return zmin, zmax, z, dz
 
-#number of galaxies behind redshift:
-def ngal_behind(z, MAXMAG, NNUM = 100):
-    if z>4.:
-        raise ValueError("z too large!")
-    ztab = np.linspace(z,4.,NNUM)
-    # nztab = [nz_distribution(zz, MAXMAG, "all")[0] for zz in ztab]
-    nztab = nofz(ztab, MAXMAG)
-    ng_behind =integrate.cumtrapz( nztab, ztab, initial = 0  ) #all galaxies behind z
-    # allgal = ngal_before[-1] #all galaxies
-    # ng_behind = allgal - ngal_before #all galaxies behind
-    ng_behind *= 4 * np.pi # full sky
-    return ng_behind
+# #number of galaxies behind redshift:
+# def ngal_behind(z, MAXMAG, NNUM = 100):
+#     if z>4.:
+#         raise ValueError("z too large!")
+#     ztab = np.linspace(z,4.,NNUM)
+#     # nztab = [nz_distribution(zz, MAXMAG, "all")[0] for zz in ztab]
+#     nztab = nofz(ztab, MAXMAG)
+#     ng_behind =integrate.cumtrapz( nztab, ztab, initial = 0  ) #all galaxies behind z
+#     # allgal = ngal_before[-1] #all galaxies
+#     # ng_behind = allgal - ngal_before #all galaxies behind
+#     ng_behind *= 4 * np.pi # full sky
+#     return ng_behind
 
-#towards finding a function zmax(m*), which is z until the last galaxy...:
-def zmax_of_MAXMAG(MAXMAG, NNUM = 100):
-    #calculates the maximum reach of LSST with a given magnitude cutoff.
-    #I defined it to be the redshift where there is less than 1e-3 galaxies behind it on the full sky
-    #NNUM = 1000 is tested to be accurate, but NNUM = 100 is probably enough as this is only a rough cutoff
-    ng_behind,ztab = ngal_behind(MAXMAG, NNUM = NNUM)
-    i_end = np.where(ng_behind < 1e-1)[0][0]
-    return ztab[i_end]
-#     return 2
+# #towards finding a function zmax(m*), which is z until the last galaxy...:
+# def zmax_of_MAXMAG(MAXMAG, NNUM = 100):
+#     #calculates the maximum reach of LSST with a given magnitude cutoff.
+#     #I defined it to be the redshift where there is less than 1e-3 galaxies behind it on the full sky
+#     #NNUM = 1000 is tested to be accurate, but NNUM = 100 is probably enough as this is only a rough cutoff
+#     ng_behind,ztab = ngal_behind(MAXMAG, NNUM = NNUM)
+#     i_end = np.where(ng_behind < 1e-1)[0][0]
+#     return ztab[i_end]
+# #     return 2
 
 
 #to calculate the S2N more easily, using mstar and fg redshift range.
@@ -1440,7 +1441,7 @@ def S2N_of_mstar_and_zf(mmag, ltabbb, zfmin, zfmax, zbmin, SURVEY = [SKA, LSST],
     zzf = (zfmin+zfmax)/2
     dzzf = zfmax-zfmin
     # bzzmin, bzzmax, bzz, bdzz = get_bg_bin_for_fgzmax(zfmax, bufferz = bufferz)
-    bzzmin = zbmin;
+    bzzmin = zbmin
     bzzmax = zbg_max(mmag, SURVEY[1])
     if bzzmin>=bzzmax:
         return 0
