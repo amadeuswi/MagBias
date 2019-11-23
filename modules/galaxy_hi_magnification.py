@@ -71,8 +71,8 @@ class GalaxyHIMagnification:
             self.average(biasg, Weight, Ngal)**2 * CDM +
             self.average(Weight, Weight, Ngal) * CSbg) / (self.average(CHImu, Weight, Ngal)**2)
         frac = num/denom
-        if (frac < 0).any():
-            raise ValueError('Negative S2N?!')
+        # if (frac < 0).any():
+        #     raise ValueError('Negative S2N?!')
     #         frac = np.abs(frac)
         res = np.sum(frac, axis=0)
         return np.sqrt(res)
@@ -167,6 +167,8 @@ class GalaxyHIMagnification:
         else:
             sumaxis = 1
         # A and B are matrices, ell x mag
+        if np.sum(N) == 0: # return None
+            return(np.array([np.nan] * len(np.sum(A*B*N, axis=sumaxis))))
         return np.sum(A*B*N, axis=sumaxis)/np.sum(N)
 
 

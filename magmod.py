@@ -1328,6 +1328,8 @@ def shotnoise(zmin, galsurv, MAXMAG, NINT = 2000, ZMAX = False):
         dNdztabnew = nofz(z_integrate, MAXMAG)
         dNzdOm = np.trapz(dNdztabnew, z_integrate)
         Nz = dNzdOm * 4 * np.pi #already in rad!!!! and multiplying with all sky
+    if Nz == 0:
+        return np.inf
     return 4*pi/Nz #shot noise! The 4 pi could be cancelled but this way I can check more easily that it's correct...
 
 

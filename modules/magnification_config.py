@@ -9,4 +9,4 @@ class MagnificationConfig:
 
         self.delta_z_bg = 0.1  # subsplitting of LSST bg bin, later added up
 
-        self.N_g_threshold = 1.
+        self.N_g_threshold = 1. # threshold of negligibility

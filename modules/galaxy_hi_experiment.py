@@ -8,7 +8,7 @@ from magmod import Cl_interferom_noise, noise_cls_single_dish, ztonu21, shotnois
 class GalaxyHIExperiment:
 
     NINT = 5
-    def __init__(self, redshift: Tuple, radio_instrument: dict, galaxy_instrument: dict, magnification_config = MagnificationConfig(), restricted_galaxy_magnitude = None):
+    def __init__(self, redshift: Tuple, radio_instrument: dict, galaxy_instrument: dict, magnification_config = MagnificationConfig()):
 
         self.config_class = magnification_config
         self.lower_redshift = redshift[0]
@@ -17,8 +17,6 @@ class GalaxyHIExperiment:
         self.radio_instrument = radio_instrument
         self.galaxy_instrument = galaxy_instrument
         self.fsky = self.radio_instrument["S_area"] / (4*np.pi)
-        if restricted_galaxy_magnitude is not None:
-            self.galaxy_instrument['rmax'] = restricted_galaxy_magnitude
 
         self.lower_galaxy_redshift = self.upper_redshift + self.config_class.redshift_separation
         self.upper_galaxy_redshift = self.galaxy_instrument['zmax']

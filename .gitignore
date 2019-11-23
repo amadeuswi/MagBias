@@ -5,3 +5,4 @@ magnification_IM.pdf
 check_noise_cl.ipynb
 plots/*
 .vscode/*
+venv_python3/*
