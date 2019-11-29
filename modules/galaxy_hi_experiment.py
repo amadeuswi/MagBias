@@ -93,5 +93,4 @@ class GalaxyHIExperiment:
 
 
     def get_shot_noise(self, z_lower, z_upper):
-        print("In shot noise we use max mag {}".format(self.config_class.max_magnitude))
         return shotnoise(z_lower, self.galaxy_instrument, self.config_class.max_magnitude, ZMAX = z_upper, NINT = self.NINT)
