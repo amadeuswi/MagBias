@@ -5,7 +5,7 @@ class MagnificationConfig:
         self.max_magnitude = 27
         self.min_magnitude = 19
         self.ell_max = 2200
-        self.n_mag = 30
+        self.delta_mag = 0.2
 
         self.delta_z_bg = 0.1  # subsplitting of LSST bg bin, later added up
 

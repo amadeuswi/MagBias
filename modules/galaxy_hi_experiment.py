@@ -70,7 +70,12 @@ class GalaxyHIExperiment:
         return mean_fov
 
     def _get_mag_bin_edges(self):
-        return np.linspace(self.config_class.min_magnitude, self.config_class.max_magnitude, self.config_class.n_mag+1)
+        res = np.arange(self.config_class.min_magnitude, self.config_class.max_magnitude + self.config_class.delta_mag, self.config_class.delta_mag)
+        if res[-1] < self.config_class.max_magnitude - 1e-3:
+            print(self.config_class.max_magnitude, res[-1])
+            raise ValueError("mag bins must extend to max mag.")
+        self.n_mag = len(res)
+        return res
 
     def _set_radio_noise(self):
             if self.radio_instrument["mode"] == "single_dish":
@@ -88,4 +93,5 @@ class GalaxyHIExperiment:
 
 
     def get_shot_noise(self, z_lower, z_upper):
+        print("In shot noise we use max mag {}".format(self.config_class.max_magnitude))
         return shotnoise(z_lower, self.galaxy_instrument, self.config_class.max_magnitude, ZMAX = z_upper, NINT = self.NINT)

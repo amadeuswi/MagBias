@@ -46,12 +46,13 @@ class GalaxyHIMagnification:
         """``idx`` is the background bin index."""
         return self.alpha_minus_one[:, idx]
 
-    def get_W_weight(self, foreground_bin_idx):
+    def get_W_weight(self, background_bin_idx):
         """
         the weight proposed by menard & bartelmann, unless ``unityweight == True``, then the weight is one.
         """
-        res = self.alpha_minus_one[:, foreground_bin_idx] + \
-            np.zeros((self.experiment.n_ell, 1))
+        res = self.get_alpha_minus_one_in_bg_bin(background_bin_idx) + np.zeros((self.experiment.n_ell, 1))
+        # res = self.alpha_minus_one[:, background_bin_idx] + \
+            # np.zeros((self.experiment.n_ell, 1))
         if self.unityweight:
             print("Warning! weight is set to 1")
             return np.ones(res.shape)
@@ -131,6 +132,12 @@ class GalaxyHIMagnification:
         alphaminusone_tab[N_g_tab <
                           self.experiment.config_class.N_g_threshold] = 1.
 
+        if len(alphaminusone_tab) != len(N_g_tab):
+            raise ValueError("alpha and N_g must have same length")
+
+        if np.isinf(alphaminusone_tab).any():
+            raise ValueError("alpha must not be infinite.")
+
         bias_g_tab = self.get_galaxy_bias(zbmean)
         # exact value doesn't matter, it's multiplied with 0!
         bias_g_tab[N_g_tab < self.experiment.config_class.N_g_threshold] = 1.
@@ -175,7 +182,7 @@ class GalaxyHIMagnification:
 if __name__ == '__main__':
     from magbias_experiments import cb_hirax as hirax, SKA1, SKA2, LSST
     from modules.galaxy_hi_experiment import GalaxyHIExperiment
-
+    from modules.magnification_config import MagnificationConfig
     redshifts = [
         (0.7755075, 1.2755075),  # hirax
         (1.2755075, 1.7755075),
@@ -186,23 +193,45 @@ if __name__ == '__main__':
         (1.84127101, 2.34127101),  
         (0.0005, 0.47039959) # SKA2
     ]
+    # each fg bin has its optimized mag_cut in our approach:
+    mag_cuts = [
+        23.0, # hirax
+        26.1,
+        27.0,
+        23.6, # SKA1
+        # 26., # TEST
+        23.1,
+        26.3,
+        27.0,
+        22.1, # SKA2
+    ]
     radio_experiments = [hirax]*3 + [SKA1]*4 + [SKA2]
     fg_bin_labels = ["H1", "H2", "H3", "SKA11",
-                   "SKA12", "SKA13", "SKA14", "SKA21"]
+                "SKA12", "SKA13", "SKA14", "SKA21"]
 
     for idx_fg_bin in range(len(redshifts)):
+        if idx_fg_bin != 3:
+            continue
         redshift = redshifts[idx_fg_bin]
         radio_experiment = radio_experiments[idx_fg_bin]
 
-        # print('working on redshift bin {}, z in {}'.format(fg_bin_labels[idx_fg_bin], redshift))
-        gXhi_experiment = GalaxyHIExperiment(redshift, radio_experiment, LSST)
+        # load the configuration and set magnitude cut:
+        gXhi_config = MagnificationConfig()
+        gXhi_config.max_magnitude = mag_cuts[idx_fg_bin]
+        
+        # load magnification experiment
+        gXhi_experiment = GalaxyHIExperiment(redshift, radio_experiment, LSST, gXhi_config)
 
-        gXhi_magnification = GalaxyHIMagnification(gXhi_experiment)
+        # calculate weighted S2N
+        unityweight = False # weight is always = 1
+        gXhi_magnification = GalaxyHIMagnification(gXhi_experiment, unityweight = unityweight)
+        S2N = gXhi_magnification.get_S2N_weighted()
 
         print("delta_ell = {}, fsky = {}".format(
             gXhi_magnification.experiment.delta_ell, gXhi_magnification.experiment.fsky))
         print("z from {} to {}".format(
             gXhi_magnification.experiment.lower_redshift, gXhi_magnification.experiment.upper_redshift))
-
-        print("S2N in bin {}: {}".format(fg_bin_labels[idx_fg_bin], gXhi_magnification.get_S2N_weighted()))
+        print("Magnitude bins are {}".format(gXhi_experiment.magnitude_bin_edges))
+        print("Magnitude cut is {}".format(gXhi_experiment.config_class.max_magnitude))
+        print("S2N in bin {}: {}".format(fg_bin_labels[idx_fg_bin], S2N))
         print("-"*20)
