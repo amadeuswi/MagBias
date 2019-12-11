@@ -50,9 +50,10 @@ class GalaxyHIMagnification:
         """
         the weight proposed by menard & bartelmann, unless ``unityweight == True``, then the weight is one.
         """
-        res = self.get_alpha_minus_one_in_bg_bin(background_bin_idx) + np.zeros((self.experiment.n_ell, 1))
+        res = self.get_alpha_minus_one_in_bg_bin(
+            background_bin_idx) + np.zeros((self.experiment.n_ell, 1))
         # res = self.alpha_minus_one[:, background_bin_idx] + \
-            # np.zeros((self.experiment.n_ell, 1))
+        # np.zeros((self.experiment.n_ell, 1))
         if self.unityweight:
             print("Warning! weight is set to 1")
             return np.ones(res.shape)
@@ -60,23 +61,24 @@ class GalaxyHIMagnification:
         return res
 
     def _get_S2N_weighted(self, CHImu, CSbg, CDM, biasg, Weight, Ngal, alphaminus1):
+        S2N_tab = self._get_S2N_weighted_tab(
+            CHImu, CSbg, CDM, biasg, Weight, Ngal, alphaminus1)
+        summed = np.sum(S2N_tab, axis=0)
+        return np.sqrt(summed)
+
+    def _get_S2N_weighted_tab(self, CHImu, CSbg, CDM, biasg, Weight, Ngal, alphaminus1):
         """S2N of magnification bias"""
         Cfg = self.get_C_HIHI()
         CSfg = self.experiment.radio_noise
         ltab = self.experiment.ell_tab
         deltaell = self.experiment.delta_ell
         fsky = self.experiment.fsky
-        num = (2*ltab + 1) * \
-            deltaell * fsky / 2
+        num = (2*ltab + 1) * deltaell * fsky / 2
         denom = 1 + (Cfg + CSfg) * (
             self.average(biasg, Weight, Ngal)**2 * CDM +
             self.average(Weight, Weight, Ngal) * CSbg) / (self.average(CHImu, Weight, Ngal)**2)
         frac = num/denom
-        # if (frac < 0).any():
-        #     raise ValueError('Negative S2N?!')
-    #         frac = np.abs(frac)
-        res = np.sum(frac, axis=0)
-        return np.sqrt(res)
+        return frac
 
     def get_galaxy_bias(self, z):
         bias_g_tab = np.array(
@@ -105,20 +107,39 @@ class GalaxyHIMagnification:
                   self.experiment.upper_redshift)/2
         delta_zf = (self.experiment.upper_redshift -
                     self.experiment.lower_redshift)/2
-        return np.array([
-            Cl_HIxmag_CAMB(
+        result = []
+        for i, mmm in enumerate(self.experiment.magnitude_bin_edges[1:]):
+            if i == 0:
+                mmm_lower = None
+            else:
+                mmm_lower = mmm - self.experiment.config_class.delta_mag
+            tmp = Cl_HIxmag_CAMB(
                 self.experiment.ell_tab,
                 zfmean,
                 delta_zf,
                 z_lower,
-                MAXMAG=mmm,
+                MAG_INTERVAL=[mmm_lower, mmm],
+                # MAG_INTERVAL=[None, mmm],
                 ZMAX=z_upper,
                 NINT_gkernel=self.NINT
             )
-            for mmm in self.experiment.magnitude_bin_edges[1:]]).T  # transpose to match shape
+            result.append(tmp)
+        return np.array(result).T
+        # return np.array([
+        #     Cl_HIxmag_CAMB(
+        #         self.experiment.ell_tab,
+        #         zfmean,
+        #         delta_zf,
+        #         z_lower,
+        #         MAG_INTERVAL=[mmm - self.experiment.config_class.delta_mag, mmm],
+        #         # MAG_INTERVAL=[None, mmm],
+        #         ZMAX=z_upper,
+        #         NINT_gkernel=self.NINT
+        #     )
+        #     for mmm in self.experiment.magnitude_bin_edges[1:]]).T  # transpose to match shape
 
-    def get_S2N_weighted_in_bg_bin(self, iz):
-        """Calculates the S2N for a magnification bias measurement in background bin number ``iz``."""
+    def get_S2N_arguments(self, iz):
+        """Gets all arguments for S2N."""
         zlow = self.experiment.galaxy_redshift_tab[iz]
         zhigh = self.experiment.galaxy_redshift_tab[iz+1]
         zbmean = (zlow + zhigh)/2
@@ -148,15 +169,13 @@ class GalaxyHIMagnification:
 
         Weight = self.get_W_weight(iz)
 
-        return self._get_S2N_weighted(
-            C_HIxmag_tab,
-            Cshot,
-            C_DM_tab,
-            bias_g_tab,
-            Weight,
-            N_g_tab,
-            alphaminusone_tab
-        )
+        return C_HIxmag_tab, Cshot, C_DM_tab, bias_g_tab, Weight, N_g_tab, alphaminusone_tab
+
+    def get_S2N_weighted_in_bg_bin(self, iz):
+        """Calculates the S2N for a magnification bias measurement in background bin number ``iz``."""
+
+        args = self.get_S2N_arguments(iz)
+        return self._get_S2N_weighted(*args)
 
     def get_S2N_weighted(self):
         """Calculates the total S2N of magnification bias (squared summation over background redshift bins) of this bg-fg combination."""
@@ -174,7 +193,7 @@ class GalaxyHIMagnification:
         else:
             sumaxis = 1
         # A and B are matrices, ell x mag
-        if np.sum(N) == 0: # return None
+        if np.sum(N) == 0:  # return None
             return(np.array([np.nan] * len(np.sum(A*B*N, axis=sumaxis))))
         return np.sum(A*B*N, axis=sumaxis)/np.sum(N)
 
@@ -190,24 +209,24 @@ if __name__ == '__main__':
         (0.34127101, 0.84127101),  # SKA1
         (0.84127101, 1.34127101),
         (1.34127101, 1.84127101),
-        (1.84127101, 2.34127101),  
-        (0.0005, 0.47039959) # SKA2
+        (1.84127101, 2.34127101),
+        (0.0005, 0.47039959)  # SKA2
     ]
     # each fg bin has its optimized mag_cut in our approach:
     mag_cuts = [
-        23.0, # hirax
+        23.0,  # hirax
         26.1,
         27.0,
-        23.6, # SKA1
+        23.6,  # SKA1
         # 26., # TEST
         23.1,
         26.3,
         27.0,
-        22.1, # SKA2
+        22.1,  # SKA2
     ]
     radio_experiments = [hirax]*3 + [SKA1]*4 + [SKA2]
     fg_bin_labels = ["H1", "H2", "H3", "SKA11",
-                "SKA12", "SKA13", "SKA14", "SKA21"]
+                     "SKA12", "SKA13", "SKA14", "SKA21"]
 
     for idx_fg_bin in range(len(redshifts)):
         if idx_fg_bin != 3:
@@ -218,20 +237,24 @@ if __name__ == '__main__':
         # load the configuration and set magnitude cut:
         gXhi_config = MagnificationConfig()
         gXhi_config.max_magnitude = mag_cuts[idx_fg_bin]
-        
+
         # load magnification experiment
-        gXhi_experiment = GalaxyHIExperiment(redshift, radio_experiment, LSST, gXhi_config)
+        gXhi_experiment = GalaxyHIExperiment(
+            redshift, radio_experiment, LSST, gXhi_config)
 
         # calculate weighted S2N
-        unityweight = False # weight is always = 1
-        gXhi_magnification = GalaxyHIMagnification(gXhi_experiment, unityweight = unityweight)
+        unityweight = False  # weight is always = 1
+        gXhi_magnification = GalaxyHIMagnification(
+            gXhi_experiment, unityweight=unityweight)
         S2N = gXhi_magnification.get_S2N_weighted()
 
         print("delta_ell = {}, fsky = {}".format(
             gXhi_magnification.experiment.delta_ell, gXhi_magnification.experiment.fsky))
         print("z from {} to {}".format(
             gXhi_magnification.experiment.lower_redshift, gXhi_magnification.experiment.upper_redshift))
-        print("Magnitude bins are {}".format(gXhi_experiment.magnitude_bin_edges))
-        print("Magnitude cut is {}".format(gXhi_experiment.config_class.max_magnitude))
+        print("Magnitude bins are {}".format(
+            gXhi_experiment.magnitude_bin_edges))
+        print("Magnitude cut is {}".format(
+            gXhi_experiment.config_class.max_magnitude))
         print("S2N in bin {}: {}".format(fg_bin_labels[idx_fg_bin], S2N))
         print("-"*20)

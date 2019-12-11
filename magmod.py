@@ -329,16 +329,50 @@ def dndz_norm(zmin, zmax, mstar, FIT = True):
     return np.trapz(dnndz, ztab)
 
 
+def sgng(ztab, mag_interval, FIT = False):
+    ztab = np.atleast_1d(ztab)
+    sgngtab = np.zeros((len(ztab)))
+    for iz in range(len(ztab)):
+        dndznow = np.float128(nofz_mag_interval(ztab[iz], mag_interval, FIT = FIT))
+        sgngnow = np.float128(sg(ztab[iz], experiment = LSST, MAXMAG = mag_interval[-1])*dndznow)
+        tmp_sgng = 5*sgngnow - 2 * dndznow
+        if np.isinf(tmp_sgng) or np.isnan(tmp_sgng):
+            tmp_sgng = 0
+            # print("settig sgng to zero!")
+        sgngtab[iz] = tmp_sgng
+    return sgngtab
 
-def g(z, zbmin, mstar, NINT = 10000, experiment = LSST, ZMAX = False): #first we try trapz, later something better
+def nofz_mag_interval(ztab, mag_interval, FIT = True):
+    if FIT:
+        nofz_function = dndz_fit
+    else:
+        nofz_function = nofz
+    nofz_upper = nofz_function(ztab, mag_interval[1])
+    if mag_interval[0] is None:
+        return nofz_upper
+    else:
+        nofz_lower = nofz_function(ztab, mag_interval[0])
+        if (nofz_lower > nofz_upper).any() and (nofz_lower > 1e-5).any:
+            raise ValueError("nofz_lower is bigger than nofz_upper.")
+        return np.abs(nofz_upper - nofz_lower)
+
+def dndz_norm_mag_interval(zmin, zmax, mag_interval, FIT = True):
+    """gets the normalization such that dndz integrates to one between zmin and zmax"""
+    ztab = np.linspace(zmin,zmax, 1000)
+    dnndz = nofz_mag_interval(ztab, mag_interval, FIT = FIT)
+    return np.trapz(dnndz, ztab)
+
+
+def g(z, zbmin, mag_interval, NINT = 10000, experiment = LSST, ZMAX = False, SGNG_FIT = False, NG_FIT = True): #first we try trapz, later something better
     """compare with handwritten entry in notebook 2 from 14/12/2018"""
 
-    if type(mstar) == bool:
-        raise ValueError("Need mstar to be given!")
+    if type(mag_interval) == bool:
+        raise ValueError("Need mag_interval to be given!")
     zmin = zbmin
 
     if type(ZMAX) == bool and not ZMAX:
-        zmax = zbg_max(mstar, experiment)
+        raise ValueError("not implemented - ZMAX must be given")
+        # zmax = zbg_max(mstar, experiment)
     elif type(ZMAX) == bool and ZMAX:
         raise ValueError("ZMAX must be either False or float")
     else:
@@ -354,9 +388,11 @@ def g(z, zbmin, mstar, NINT = 10000, experiment = LSST, ZMAX = False): #first we
     # fac1 = sg5minus2(zint, mstar)
     # fac2 = W_dndz(zint, zmin, zmax, mstar)
 
+    # fac1 = sgng_interp(zint, mag_interval[-1])
+    # fac2 = 1 / dndz_norm(zmin, zmax, mag_interval[-1])
 
-    fac1 = sgng_interp(zint, mstar)
-    fac2 = 1 / dndz_norm(zmin, zmax, mstar)
+    fac1 = sgng(zint, mag_interval, FIT = SGNG_FIT)
+    fac2 = 1 / dndz_norm_mag_interval(zmin, zmax, mag_interval, FIT = NG_FIT)
 
     # fac1 = np.ones(zint.shape)
     # fac2 = 1/(zmax-zmin)
@@ -417,7 +453,7 @@ def dummy_T(z): #returns 1, for non-temperature power spectra
     return np.ones(z.shape)
 
 
-def Cl_HIxmag_CAMB(ltable, zf, delta_zf, zbmin, Nint = 500, NINT_gkernel = 10000, MAXMAG = False, NOUNITS = False, ZMAX = False):
+def Cl_HIxmag_CAMB(ltable, zf, delta_zf, zbmin, Nint = 500, NINT_gkernel = 10000, MAG_INTERVAL = [None,27], NOUNITS = False, ZMAX = False):
     """ltable, zf foreground redshift, zb background redshift,
     delta_zf foreground redshift widht, Nint integration steps"""
 
@@ -441,7 +477,7 @@ def Cl_HIxmag_CAMB(ltable, zf, delta_zf, zbmin, Nint = 500, NINT_gkernel = 10000
         pknltab = np.array([pknl(( ell+1/2)/rCom(zzz), zzz) for zzz in ztab])
         # integrand[:,il] = (1+ztab) * bHI(ztab) * T_obs(ztab) * W_tophat(ztab, zmin, zmax) * g(ztab, zb, delta_zb, S_G = S_G) \
         # / rCom(ztab)**2 * pknltab
-        integrand[:,il] = (1+ztab) * bfunc(ztab) * T_func(ztab) * W_tophat(ztab, zmin, zmax) * g(ztab, zbmin, MAXMAG, ZMAX = ZMAX, NINT = NINT_gkernel) \
+        integrand[:,il] = (1+ztab) * bfunc(ztab) * T_func(ztab) * W_tophat(ztab, zmin, zmax) * g(ztab, zbmin, MAG_INTERVAL, ZMAX = ZMAX, NINT = NINT_gkernel) \
         / rCom(ztab)**2 * pknltab
 
         #old and slow ways to calculate the same thing:

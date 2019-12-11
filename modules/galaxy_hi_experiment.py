@@ -55,7 +55,7 @@ class GalaxyHIExperiment:
     def _get_delta_ell(self):
         res = self._get_ell_min()
         if self.config_class.rough_ell_resolution:
-            res *= 10
+            res *= self.config_class.ell_resolution_multiplier
         return res
 
     def _get_ell_tab(self):
