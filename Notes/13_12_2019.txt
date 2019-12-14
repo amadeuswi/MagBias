@@ -1,0 +1,113 @@
+run with precise settings for conservative foreground subtraction (truncated low ell range):
+ell table goes from 240.0 to 2200.0, with new delta ell 63.225806451612904 and old one 60
+Using interferometer mode.
+
+`
+for idx_fg_bin in range(len(redshifts)):
+    #     if idx_fg_bin != 0:
+    #         continue
+    redshift = redshifts[idx_fg_bin]
+    radio_experiment = radio_experiments[idx_fg_bin]
+
+    # load the configuration
+    gXhi_config = MagnificationConfig()
+
+    # set magnitude cut:
+#     gXhi_config.max_magnitude = mag_cuts[idx_fg_bin]
+
+    # decide on conservative forecasts (fg subtraction)
+    gXhi_config.conservative_fg_forecast = True
+
+    # load magnification experiment
+    gXhi_experiment = GalaxyHIExperiment(redshift, radio_experiment, LSST, gXhi_config)
+
+    # calculate weighted S2N
+    unityweight = False  # weight is always = 1
+    gXhi_magnification = GalaxyHIMagnification(gXhi_experiment, unityweight=unityweight)
+    S2N = gXhi_magnification.get_S2N_weighted()
+
+    print("delta_ell = {}, fsky = {}".format(
+        gXhi_magnification.experiment.delta_ell, gXhi_magnification.experiment.fsky))
+    print("z from {} to {}".format(
+        gXhi_magnification.experiment.lower_redshift, gXhi_magnification.experiment.upper_redshift))
+    print("Magnitude cut is {}".format(gXhi_experiment.config_class.max_magnitude))
+    print("S2N in bin {}: {}".format(fg_bin_labels[idx_fg_bin], S2N))
+    print("-" * 20)
+`
+output:
+
+ 
+/Users/amadeus/Documents/PhD/work/MagBias/lf_photometric.py:272: RuntimeWarning: divide by zero encountered in true_divide
+  return 0.4*lumphi/lumPhi
+/Users/amadeus/Documents/PhD/work/MagBias/lf_photometric.py:272: RuntimeWarning: invalid value encountered in true_divide
+  return 0.4*lumphi/lumPhi
+/Users/amadeus/Documents/PhD/work/MagBias/magmod.py:337: RuntimeWarning: invalid value encountered in multiply
+  sgngnow = np.float128(sg(ztab[iz], experiment = LSST, MAXMAG = mag_interval[-1])*dndznow)
+/Users/amadeus/Documents/PhD/work/MagBias/modules/galaxy_hi_magnification.py:66: RuntimeWarning: invalid value encountered in less
+  if (S2N_tab < 0).any():
+
+delta_ell = 63.225806451612904, fsky = 0.3625
+z from 0.7755075 to 1.2755075
+Magnitude cut is 27
+S2N in bin H1: 57.03357889540416
+--------------------
+ell table goes from 240.0 to 2200.0, with new delta ell 63.225806451612904 and old one 60
+Using interferometer mode.
+delta_ell = 63.225806451612904, fsky = 0.3625
+z from 1.2755075 to 1.7755075
+Magnitude cut is 27
+S2N in bin H2: 21.0811786482639
+--------------------
+ell table goes from 240.0 to 2200.0, with new delta ell 63.225806451612904 and old one 60
+Using interferometer mode.
+delta_ell = 63.225806451612904, fsky = 0.3625
+z from 1.7755075 to 2.2755075
+Magnitude cut is 27
+S2N in bin H3: 6.12218595102944
+--------------------
+ell table goes from 40.0 to 2200.0, with new delta ell 10.046511627906977 and old one 10
+Using single dish mode.
+
+/Users/amadeus/Documents/PhD/work/MagBias/lf_photometric.py:190: IntegrationWarning: The integral is probably divergent, or slowly convergent.
+  clblue=[quad(lumfun,norm*mag_lim_blue[i],lnlum_max,args=(z[i],"blue"))[0] for i in range(len(z))]
+/Users/amadeus/Documents/PhD/work/MagBias/modules/galaxy_hi_magnification.py:81: RuntimeWarning: overflow encountered in true_divide
+  self.average(Weight, Weight, Ngal) * CSbg) / (self.average(CHImu, Weight, Ngal)**2)
+
+delta_ell = 10.046511627906977, fsky = 0.40982397846163054
+z from 0.34127101 to 0.84127101
+Magnitude cut is 27
+S2N in bin SKA11: 15.010272725208507
+--------------------
+ell table goes from 40.0 to 2200.0, with new delta ell 10.046511627906977 and old one 10
+Using single dish mode.
+
+/Users/amadeus/Documents/PhD/work/MagBias/magmod.py:1154: RuntimeWarning: overflow encountered in exp
+  oneover_W_ell = np.exp( ltab**2 * sigb**2) #beam smoothing function.
+
+delta_ell = 10.046511627906977, fsky = 0.40982397846163054
+z from 0.84127101 to 1.34127101
+Magnitude cut is 27
+S2N in bin SKA12: 6.703409718332032
+--------------------
+ell table goes from 40.0 to 2200.0, with new delta ell 10.046511627906977 and old one 10
+Using single dish mode.
+delta_ell = 10.046511627906977, fsky = 0.40982397846163054
+z from 1.34127101 to 1.84127101
+Magnitude cut is 27
+S2N in bin SKA13: 2.4617676587008743
+--------------------
+ell table goes from 40.0 to 2200.0, with new delta ell 10.046511627906977 and old one 10
+Using single dish mode.
+delta_ell = 10.046511627906977, fsky = 0.40982397846163054
+z from 1.84127101 to 2.34127101
+Magnitude cut is 27
+S2N in bin SKA14: 0.6632751900885229
+--------------------
+ell table goes from 40.0 to 2200.0, with new delta ell 10.046511627906977 and old one 10
+Using single dish mode.
+delta_ell = 10.046511627906977, fsky = 0.40982397846163054
+z from 0.0005 to 0.47039959
+Magnitude cut is 27
+S2N in bin SKA21: 17.351694352329794
+--------------------
+
